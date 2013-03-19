@@ -1,0 +1,11 @@
+{application,tgws,
+             [{description,"11"},
+              {vsn,"1"},
+              {registered,[]},
+              {applications,[kernel,stdlib,crypto,cowboy,compiler,lager,
+                             syntax_tools,jsx]},
+              {mod,{tgws_app,[]}},
+              {env,[]},
+              {modules,[tgws_app,tgws_events,tgws_events_handler,
+                        tgws_game_controller,tgws_handler,tgws_messages,
+                        tgws_player_list,tgws_root_sup,tgws_sup]}]}.
