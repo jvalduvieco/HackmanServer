@@ -4,4 +4,6 @@ deps
 *.beam
 *.plt
 *.dump
+*.app
+*.rel
 log

@@ -3,8 +3,7 @@
     {vsn, "1"},
     {registered, []},
     {applications, [
-        kernel,stdlib,crypto,cowboy,
-        compiler,lager,syntax_tools,jsx
+        kernel, sasl, stdlib, crypto, cowboy, compiler, lager, syntax_tools, jsx
     ]},
     {mod, { tgws_app, []}},
     {env, []}
