@@ -19,8 +19,7 @@ start(_StartType, _StartArgs) ->
 	cowboy:start_listener(tgws_websocket, 5,
 		cowboy_tcp_transport, [{port, 10100}],
 		cowboy_http_protocol, [{dispatch, Dispatch}]
-	),
-	tgws_sup:start_link().
+	).
 
 stop(_State) ->
 	ok.
