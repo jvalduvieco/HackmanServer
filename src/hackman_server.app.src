@@ -1,10 +1,10 @@
-{application, tgws, [
+{application, hackman_server, [
     {description, "11"},
     {vsn, "1"},
     {registered, []},
     {applications, [
         kernel, sasl, stdlib, crypto, cowboy, compiler, lager, syntax_tools, jsx
     ]},
-    {mod, { tgws_app, []}},
+    {mod, { hackman_server_app, []}},
     {env, []}
 ]}.

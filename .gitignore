@@ -6,4 +6,6 @@ deps
 *.dump
 *.app
 *.rel
+*.boot
+*.script
 log

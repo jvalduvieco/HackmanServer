@@ -1,4 +1,4 @@
--module(tgws_handler).
+-module(hs_websocket_handler).
 -behaviour(cowboy_http_handler).
 -behaviour(cowboy_http_websocket_handler).
 
@@ -37,11 +37,11 @@ websocket_init(_Any, Req, []) ->
 
 % Called when a text message arrives.
 websocket_handle({text, Msg}, Req, State) ->
-	lager:debug("Received: ~p ~p", [self(), Msg]),
+	%%lager:debug("Received: ~p ~p", [self(), Msg]),
 	Decoded = jsx:decode(Msg),
-	lager:debug("Decoded: ~p",[Decoded]),
+	%%lager:debug("Decoded: ~p",[Decoded]),
 	{Type, From} = get_metadata(Decoded),
-	{Action, Response, NewState} = tgws_messages:handle(Type, From, remove_metadata(Decoded), State),
+	{Action, Response, NewState} = hs_messages:handle(Type, From, remove_metadata(Decoded), State),
 	translate_to_websocket_response(Action, Response, Req, NewState);
 
 % With this callback we can handle other kind of

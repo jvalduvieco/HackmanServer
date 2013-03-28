@@ -1,4 +1,4 @@
-APP:=tgws
+APP:=hackman_server
 ERL:=erl
 EPATH:=ebin deps/*/ebin
 APPS:=erts stdlib kernel crypto sasl compiler syntax_tools

@@ -1,5 +1,5 @@
 %% Copyright
--module(tgws_root_sup).
+-module(hs_root_sup).
 -author("jvalduvieco").
 
 -behaviour(supervisor).
@@ -16,12 +16,9 @@ start_link() ->
 
 %% supervisor callbacks
 init([]) ->
-
-%% game event manager
-
-	GameControllerChildSpec = {{local, tgws_game_controller},
-		{tgws_game_controller, start_link, []},
-		permanent, infinity, worker, [tgws_game_controller]},
+	GameControllerChildSpec = {{local, hs_game_controller},
+		{hs_game_controller, start_link, []},
+		permanent, infinity, worker, [hs_game_controller]},
 	{ok, {{one_for_one, 5, 10}, [
 		GameControllerChildSpec
 	]}}.

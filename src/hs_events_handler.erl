@@ -1,5 +1,5 @@
 %% Copyright
--module(tgws_events_handler).
+-module(hs_events_handler).
 -author("jvalduvieco").
 
 -behaviour(gen_event).
