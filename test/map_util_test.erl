@@ -23,22 +23,25 @@ test_insert() ->
   Y = 20,
   IsSolid = true,
   {ok, ResultAdd} = hs_map_util:add_entity(Map, Id, Entity, {X, Y}, IsSolid),
-  %io:format("~p~n", [ResultAdd]),
   ?assert_equal({{X,Y},{Id,Entity,true}}, ResultAdd),
-
   {ok, ResultGet} = hs_map_util:get_entities(Map, {X, Y}),
-  ?assert_equal([{{X,Y},{Id,Entity,true}}], ResultGet),
-  %io:format("~p~n", [ResultGet]).
+  ?assert_equal([{Id,Entity,true}], ResultGet),
 
   Id2 = 2,
   Entity2 = {test, entity2, {4, 5, 6}},
   {ok, ResultAdd2} = hs_map_util:add_entity(Map, Id2, Entity2, {X, Y}, IsSolid),
   ?assert_equal({{X,Y},{Id2,Entity2,true}}, ResultAdd2),
-
   {ok, ResultGet2} = hs_map_util:get_entities(Map, {X, Y}),
-  ?assert_equal([{{X,Y},{Id,Entity,true}}, {{X,Y},{Id2,Entity2,true}}], ResultGet2),
+  ?assert_equal([{Id,Entity,true}, {Id2,Entity2,true}], ResultGet2),
 
+  ResultSolid = hs_map_util:is_solid(Map, {X, Y}),
+  ?assert_equal(true, ResultSolid),
 
+  ResultSolid2 = hs_map_util:is_solid(Map, {X+1, Y}),
+  ?assert_equal(false, ResultSolid2),
+
+  ResultFreeMoves = hs_map_util:free_move_positions(Map, {X+1, Y}),
+  ?assert_equal({ok,[{11,19},{12,19},{12,20},{12,21},{11,21},{10,21},{10,19}]}, ResultFreeMoves).
 
 
 %%   ?assert_equal(1, length( myapp_users:all() )).
