@@ -43,15 +43,13 @@ delete_entity(Map, Id, [H|T]) ->
 get_entities(Map, {X, Y}) ->
   TableName = get_table_name(Map),
   Key = {X, Y},
-  Result = case ets:lookup(TableName, Key) of
-    [] -> not_found;
-    List -> List
-  end,
+  List = ets:lookup(TableName, Key),
+  Result = [Value || {_Key, Value} <- List],
   {ok, Result}.
 
 is_solid(Map, {X, Y}) ->
-  List = get_entities(Map, {X, Y}),
-  Result = [true || {_, _, IsSolid} <- List, IsSolid =:= true],
+  {ok, List} = get_entities(Map, {X, Y}),
+  Result = [1 || {_, _, IsSolid} <- List, IsSolid =:= true],
   case Result of
     [] -> false;
     _ -> true
