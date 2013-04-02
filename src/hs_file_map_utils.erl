@@ -28,8 +28,8 @@ get_layer_objects(Layer) ->
 
 load_collision_layer(CollisionLayer, Map, {X, Y}, MaxX, MaxY) when X == MaxX ->
 	load_collision_layer(CollisionLayer, Map, {0,Y+1}, MaxX, MaxY);
-load_collision_layer(_CollisionLayer, _Map, {_X, Y}, _MaxX, MaxY) when Y == MaxY ->
-	ok;
+load_collision_layer(_CollisionLayer, Map, {_X, Y}, _MaxX, MaxY) when Y == MaxY ->
+	{ok, Map};
 load_collision_layer([H|CollisionLayer], Map, {X, Y}, MaxX, MaxY) when H == 1 ->
 	hs_map_util:add_entity(Map, Y*MaxX+X, wall, {X,Y}, true),
 	load_collision_layer(CollisionLayer, Map, {X+1,Y}, MaxX, MaxY);
