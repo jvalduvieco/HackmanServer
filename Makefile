@@ -16,11 +16,14 @@ clean:
 	./rebar clean
 
 $(APP).boot: $(APP).rel Makefile
-	$(ERL) -pa $(EPATH) -noshell +B -eval \
+	@$(ERL) -pa $(EPATH) -noshell +B -eval \
 	'case systools:make_script("$(basename $@)",[local]) of ok -> halt(0); _ -> halt(1) end.'
+	@echo '*** SUCCESS!'
+	@echo Now you can start your app issuing:
+	@echo erl -pa ebin 'deps/*/ebin' -boot $(APP)
 
 $(APP).rel: ebin/$(APP).app Makefile
-	$(ERL) -pa $(EPATH) -noshell +B -eval \
+	@$(ERL) -pa $(EPATH) -noshell +B -eval \
 	"ok = application:load($(basename $@)), \
 	 {ok, Apps} = application:get_key($(basename $@), applications), \
 	 {ok, F} = file:open(\"$@\", [write]), \
