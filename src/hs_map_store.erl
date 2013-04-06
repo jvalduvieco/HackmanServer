@@ -3,7 +3,7 @@
 -author("jordillonch").
 
 %% API
--export([initialize/0, add_entity/5, delete_entity/2, get_entities/2, is_solid/2, free_move_positions/2]).
+-export([initialize/0, add_entity/5, delete_entity_check_type/3, get_entities/2, get_entities_by_type/2, is_solid/2, free_move_positions/2]).
 
 %% returns a new map object
 initialize() ->
@@ -27,18 +27,9 @@ add_entity(MapHandle, Id, Entity, {X, Y}, IsSolid) ->
   end,
   {ok, Result}.
 
-delete_entity(MapHandle, Id) ->
+delete_entity_check_type(MapHandle, Id, Type) ->
   TableName = get_table_name(MapHandle),
-  List = ets:match(TableName, {{'_', '_'}, {Id, '_', '_'}}),
-  delete_entity(MapHandle, Id, List),
-  ok.
-delete_entity(_, _, []) ->
-  ok;
-delete_entity(MapHandle, Id, [H|T]) ->
-  TableName = get_table_name(MapHandle),
-  {Key, _} = H,
-  ok = ets:delete(TableName, Key),
-  delete_entity(MapHandle, Id, T).
+	ets:select_delete(TableName, [{{{'_','_'}, {Id, Type, '_'}}, [], [true]}]).
 
 get_entities(MapHandle, {X, Y}) ->
   TableName = get_table_name(MapHandle),
@@ -46,6 +37,12 @@ get_entities(MapHandle, {X, Y}) ->
   List = ets:lookup(TableName, Key),
   Result = [Value || {_Key, Value} <- List],
   {ok, Result}.
+
+get_entities_by_type(MapHandle, Type) ->
+	TableName = get_table_name(MapHandle),
+	MatchResult = ets:select(TableName, [{{{'$1','$2'},{'$3',Type,'_'}},[],[['$1','$2','$3']]}]),
+	Result =[[{<<"x">>, X}, {<<"y">>, Y}, {<<"id">>, Id}, {<<"type">>, Type}]||[X,Y,Id] <- MatchResult],
+	{ok, Result}.
 
 is_solid(MapHandle, {X, Y}) ->
   {ok, List} = get_entities(MapHandle, {X, Y}),

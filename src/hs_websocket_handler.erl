@@ -12,7 +12,7 @@
 ]).
 
 % Called to know how to dispatch a new connection.
-init({tcp, http}, Req, _Opts) ->
+init({tcp, http}, _Req, _Opts) ->
 %	lager:debug("Request: ~p", [Req]),
 % "upgrade" every request to websocket,
 % we're not interested in serving any other content.
@@ -40,8 +40,8 @@ websocket_handle({text, Msg}, Req, State) ->
 	%%lager:debug("Received: ~p ~p", [self(), Msg]),
 	Decoded = jsx:decode(Msg),
 	%%lager:debug("Decoded: ~p",[Decoded]),
-	{Type, From} = get_metadata(Decoded),
-	{Action, Response, NewState} = hs_messages:handle(Type, From, remove_metadata(Decoded), State),
+	{Type, Session} = get_metadata(Decoded),
+	{Action, Response, NewState} = hs_messages:handle(Type, {Session, self()}, remove_metadata(Decoded), State),
 	translate_to_websocket_response(Action, Response, Req, NewState);
 
 % With this callback we can handle other kind of
@@ -52,9 +52,8 @@ websocket_handle(Msg, Req, State) ->
 
 % Other messages from the inner system are handled here.
 websocket_info(Info, Req, State) ->
-	%% FIXME: Fa pudor passar el Req només per a posar-lo a la resposta...
-	lager:debug("Info received ~p", [Info]),
 	{Action, Data} = Info,
+%% FIXME: Fa pudor passar el Req només per a posar-lo a la resposta...
 	translate_to_websocket_response(Action, Data, Req, State).
 
 websocket_terminate(_Reason, _Req, _State) ->

@@ -10,8 +10,7 @@ start(_StartType, _StartArgs) ->
 		{'_', hs_websocket_handler, []}
 	]}],
 
-	lager:set_loglevel(lager_console_backend, info),
-	gen_event:start_link({local, hs_game_event_manager}),
+	lager:set_loglevel(lager_console_backend, debug),
 	hs_root_sup:start_link(),
 
 %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
