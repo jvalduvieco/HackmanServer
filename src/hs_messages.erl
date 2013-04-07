@@ -26,6 +26,10 @@ handle(<<"getObjects">>, _From, _Message, State) ->
 		{<<"type">>,<<"getObjectsResponse">>},
 		{<<"list">>, List}],
 		State};
+handle(<<"ping">>, _From, Message, State) ->
+	{reply, [{<<"statusCode">>, 200},
+		{<<"type">>,<<"pong">>} | Message ],
+		State};
 handle(<<"positionUpdate">>, From, Message, State)->
 	ok = hs_game_controller:position_update(From, Message),
 	{noreply, none, State};
