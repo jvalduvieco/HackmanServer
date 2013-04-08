@@ -15,31 +15,32 @@ init(Parameters) ->
 	WebsocketPid = proplists:get_value(websocket_pid, Parameters, none),
 	{ok, #state{session_id = SessionId, websocket_pid = WebsocketPid}}.
 
-handle_event({position_update, {Session, ClientGatewayPid}, Data}, State) ->
+handle_event({position_update, {Session, _ClientGatewayPid}, Data}, State) ->
 	MySession = State#state.session_id,
+	lager:debug("Check S:~p M:~p",[Session, MySession]),
 	case Session of
 		MySession ->
 			ok;
 		_OtherSessionId ->
-			ClientGatewayPid ! {reply, [{<<"type">>, <<"positionUpdateAnnounce">>} | Data]}
+			State#state.websocket_pid ! {reply, [{<<"type">>, <<"positionUpdateAnnounce">>} | Data]}
 	end,
 	{ok, State};
-handle_event({pick_object, {Session, ClientGatewayPid}, Data}, State) ->
+handle_event({pick_object, {Session, _ClientGatewayPid}, Data}, State) ->
 	MySession = State#state.session_id,
 	case Session of
 		MySession ->
 			ok;
 		_OtherSessionId ->
-			ClientGatewayPid ! {reply, [{<<"type">>, <<"pickObjectAnnounce">>} | Data]}
+			State#state.websocket_pid ! {reply, [{<<"type">>, <<"pickObjectAnnounce">>} | Data]}
 	end,
 	{ok, State};
-handle_event({new_player, {Session, ClientGatewayPid}, PlayerData}, State) ->
+handle_event({new_player, {Session, _ClientGatewayPid}, PlayerData}, State) ->
 	MySession = State#state.session_id,
 	case Session of
 		MySession ->
 			ok;
 		_OtherSessionId ->
-			ClientGatewayPid ! {reply, [{<<"type">>, <<"newPlayerAnnounce">>},{<<"sessionId">>, Session}] ++ PlayerData}
+			State#state.websocket_pid ! {reply, [{<<"type">>, <<"newPlayerAnnounce">>},{<<"sessionId">>, Session}] ++ PlayerData}
 	end,
 	{ok, State};
 handle_event({start_game}, State) ->

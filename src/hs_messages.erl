@@ -30,8 +30,8 @@ handle(<<"ping">>, _From, Message, State) ->
 	{reply, [{<<"statusCode">>, 200},
 		{<<"type">>,<<"pong">>} | Message ],
 		State};
-handle(<<"positionUpdate">>, From, Message, State)->
-	ok = hs_game_controller:position_update(From, Message),
+handle(<<"positionUpdate">>, Session, Message, State)->
+	ok = hs_game_controller:position_update(Session, Message),
 	{noreply, none, State};
 handle(<<"pickObject">>, From, Message, State)->
 	ok = hs_game_controller:pick_object(From, Message),
