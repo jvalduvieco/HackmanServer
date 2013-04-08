@@ -17,7 +17,6 @@ init(Parameters) ->
 
 handle_event({position_update, {Session, _ClientGatewayPid}, Data}, State) ->
 	MySession = State#state.session_id,
-	lager:debug("Check S:~p M:~p",[Session, MySession]),
 	case Session of
 		MySession ->
 			ok;
@@ -44,7 +43,6 @@ handle_event({new_player, {Session, _ClientGatewayPid}, PlayerData}, State) ->
 	end,
 	{ok, State};
 handle_event({start_game}, State) ->
-	lager:debug("Start game received ~p", [State]),
 	State#state.websocket_pid ! {reply, [{<<"type">>, <<"startGame">>}]},
 	{ok, State};
 handle_event(Event, State) ->
