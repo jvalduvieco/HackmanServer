@@ -48,7 +48,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 	lager:debug("hs_game_controller: code_change.."),
 	{ok, StateName, State}.
 handle_info(_Info, _StateName, State) ->
-	lager:debug("hs_game_controller: stop.."),
+	lager:debug("hs_game_controller: handle_info.."),
 	{stop, unimplemented, State}.
 terminate(_Reason, _StateName, _State) ->
 	lager:debug("hs_game_controller: terminating.."),
