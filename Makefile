@@ -18,9 +18,13 @@ clean:
 $(APP).boot: $(APP).rel Makefile
 	@$(ERL) -pa $(EPATH) -noshell +B -eval \
 	'case systools:make_script("$(basename $@)",[local]) of ok -> halt(0); _ -> halt(1) end.'
-	@echo '*** SUCCESS!'
-	@echo Now you can start your app issuing:
-	@echo erl -pa ebin 'deps/*/ebin' -boot $(APP) -config etc/app.config
+	@echo '************************************************************************************'
+	@echo '**  SUCCESS!'
+	@echo '**  Now you can start your app issuing:'
+	@echo '**    erl -pa ebin "deps/*/ebin" -boot $(APP) -config etc/app.config'
+	@echo '**  or'
+	@echo '**    make run'
+	@echo '************************************************************************************'
 
 $(APP).rel: ebin/$(APP).app Makefile
 	@$(ERL) -pa $(EPATH) -noshell +B -eval \
@@ -47,4 +51,5 @@ dialyzer: compile
 	@echo
 	dialyzer --plt $(PLT) -Wno_undefined_callbacks ebin
 
-
+run: all
+	erl -pa ebin 'deps/*/ebin' -boot $(APP) -config etc/app.config

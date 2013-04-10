@@ -5,7 +5,7 @@
 %% API
 -export([start_link/0]).
 -export([login/0, start_game/0, new_player/2, get_objects/0, position_update/2, pick_object/2]).
--export([init/1, terminate/3]).
+-export([init/1, code_change/4, handle_info/3, handle_sync_event/4, handle_event/3, terminate/3]).
 -export([waiting/2, waiting/3, playing/2, finished/2]).
 
 -record(state, {next_session = 0, map}).
@@ -33,13 +33,25 @@ pick_object(Session, Message) ->
 
 init([]) ->
 	hs_player_list:init(),
-	%% FIXME: Make this configurable/passed by param when creating a game
 	Map = hs_file_map_loader:load(hs_config:get(map_file)),
 	gen_event:start_link({local, hs_game_event_manager}),
 	% FIXME: Add a supervised event handler
 	ok = gen_event:add_handler(hs_game_event_manager, hs_rules_enforcement, []),
 	{ok, waiting, #state{map=Map}}.
+handle_sync_event(_Event, _From, _StateName, State) ->
+	lager:debug("hs_game_controller: handle_sync_event.."),
+	{stop, unimplemented, State}.
+handle_event(_Event, _StateName, State) ->
+	lager:debug("hs_game_controller: handle_event.."),
+	{stop, unimplemented, State}.
+code_change(_OldVsn, StateName, State, _Extra) ->
+	lager:debug("hs_game_controller: code_change.."),
+	{ok, StateName, State}.
+handle_info(_Info, _StateName, State) ->
+	lager:debug("hs_game_controller: stop.."),
+	{stop, unimplemented, State}.
 terminate(_Reason, _StateName, _State) ->
+	lager:debug("hs_game_controller: terminating.."),
 	ok.
 
 %% Sync events

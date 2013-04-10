@@ -45,20 +45,22 @@ handle_event({new_player, {Session, _ClientGatewayPid}, PlayerData}, State) ->
 handle_event({start_game}, State) ->
 	State#state.websocket_pid ! {reply, [{<<"type">>, <<"startGame">>}]},
 	{ok, State};
-handle_event(Event, State) ->
-	lager:error("Unhandled event: ~p", [Event]),
+handle_event(_Event, State) ->
+	lager:debug("hs_events_handler: handle_event.."),
 	{ok, State}.
 
-handle_call(Request, State) ->
-	lager:error("Unhandled call: ~p", [Request]),
+handle_call(_Request, State) ->
+	lager:debug("hs_events_handler: handle_call.."),
 	{ok, reply, State}.
 
-handle_info(Info, State) ->
-	lager:error("Unhandled info: ~p", [Info]),
+handle_info(_Info, State) ->
+	lager:debug("hs_events_handler: handle_info.."),
 	{ok, State}.
 
 terminate(_Arg, _State) ->
+	lager:debug("hs_events_handler: terminate.."),
 	ok.
 
 code_change(_OldVsn, State, _Extra) ->
+	lager:debug("hs_events_handler: code_change.."),
 	{ok, State}.
