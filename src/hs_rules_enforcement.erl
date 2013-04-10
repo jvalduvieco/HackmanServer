@@ -12,8 +12,8 @@
 -record(state, {map}).
 
 init(Args) ->
-	lager:debug("Rules enforcement registered ~p ", [Args]),
-	Map = hs_file_map_loader:load("priv/level0.json"),
+	lager:info("Rules enforcement registered ~p ", [Args]),
+	Map = hs_file_map_loader:load(hs_config:get(map_file)),
 	{ok, #state{map=Map}}.
 
 handle_event({pick_object, ClientData, Data}, State) ->

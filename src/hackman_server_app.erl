@@ -10,13 +10,13 @@ start(_StartType, _StartArgs) ->
 		{'_', hs_websocket_handler, []}
 	]}],
 
-	lager:set_loglevel(lager_console_backend, debug),
+	lager:set_loglevel(lager_console_backend, hs_config:get(log_level)),
 	hs_root_sup:start_link(),
 
 %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
 %% Listen in 10100/tcp for http connections.
-	cowboy:start_listener(hs_websocket_listener, 5,
-		cowboy_tcp_transport, [{port, 10100}],
+	cowboy:start_listener(hs_websocket_listener, hs_config:get(start_listeners),
+		cowboy_tcp_transport, [{port, hs_config:get(server_port)}],
 		cowboy_http_protocol, [{dispatch, Dispatch}]
 	).
 

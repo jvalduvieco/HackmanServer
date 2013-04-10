@@ -34,7 +34,7 @@ pick_object(Session, Message) ->
 init([]) ->
 	hs_player_list:init(),
 	%% FIXME: Make this configurable/passed by param when creating a game
-	Map = hs_file_map_loader:load("priv/level0.json"),
+	Map = hs_file_map_loader:load(hs_config:get(map_file)),
 	gen_event:start_link({local, hs_game_event_manager}),
 	% FIXME: Add a supervised event handler
 	ok = gen_event:add_handler(hs_game_event_manager, hs_rules_enforcement, []),
