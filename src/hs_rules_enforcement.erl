@@ -12,8 +12,8 @@
 -record(state, {map}).
 
 init(Args) ->
-	lager:debug("Rules enforcement registered ~p ", [Args]),
-	Map = hs_file_map_loader:load("priv/level0.json"),
+	lager:info("Rules enforcement registered ~p ", [Args]),
+	Map = hs_file_map_loader:load(hs_config:get(map_file)),
 	{ok, #state{map=Map}}.
 
 handle_event({pick_object, ClientData, Data}, State) ->
@@ -23,18 +23,23 @@ handle_event({pick_object, ClientData, Data}, State) ->
 	{ok, State};
 
 handle_event(_Event, State) ->
+	lager:debug("hs_rules_enforcement: handle_event.."),
 	{ok, State}.
 
 handle_call(_Request, State) ->
+	lager:debug("hs_rules_enforcement: handle_call.."),
 	{ok, reply, State}.
 
 handle_info(_Info, State) ->
+	lager:debug("hs_rules_enforcement: handle_info.."),
 	{ok, State}.
 
 terminate(_Arg, _State) ->
+	lager:debug("hs_rules_enforcement: terminate.."),
 	ok.
 
 code_change(_OldVsn, State, _Extra) ->
+	lager:debug("hs_rules_enforcement: code_change.."),
 	{ok, State}.
 
 
