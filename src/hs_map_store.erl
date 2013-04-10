@@ -53,16 +53,17 @@ is_solid(MapHandle, {X, Y}) ->
   end.
 
 %% get a list of coords that are ok to move an entity because is not colliding with anything
+%% orthogonal
 free_move_positions(MapHandle, {X, Y}) ->
   List = [
   {{X,   Y-1}, is_solid(MapHandle, {X,   Y-1})},
-  {{X+1, Y-1}, is_solid(MapHandle, {X+1, Y-1})},
+%%   {{X+1, Y-1}, is_solid(MapHandle, {X+1, Y-1})},
   {{X+1, Y},   is_solid(MapHandle, {X+1, Y})},
-  {{X+1, Y+1}, is_solid(MapHandle, {X+1, Y+1})},
+%%   {{X+1, Y+1}, is_solid(MapHandle, {X+1, Y+1})},
   {{X,   Y+1}, is_solid(MapHandle, {X,   Y+1})},
-  {{X-1, Y+1}, is_solid(MapHandle, {X-1, Y+1})},
-  {{X-1, Y},   is_solid(MapHandle, {X-1, Y})},
-  {{X-1, Y-1}, is_solid(MapHandle, {X-1, Y-1})}
+%%   {{X-1, Y+1}, is_solid(MapHandle, {X-1, Y+1})},
+  {{X-1, Y},   is_solid(MapHandle, {X-1, Y})}
+%%   {{X-1, Y-1}, is_solid(MapHandle, {X-1, Y-1})}
   ],
   Result = [Coords || {Coords, IsSolid} <- List, IsSolid =:= false],
   {ok, Result}.

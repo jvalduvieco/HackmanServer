@@ -42,7 +42,7 @@ load_collision_layer(CollisionLayer, Map, {X, Y}, MaxX, MaxY) when X == MaxX ->
 load_collision_layer(_CollisionLayer, Map, {_X, Y}, _MaxX, MaxY) when Y == MaxY ->
 	{ok, Map};
 load_collision_layer([H|CollisionLayer], Map, {X, Y}, MaxX, MaxY) when H == 1 ->
-	BinId = erlang:integer_to_binary( Y*MaxX+X,10),
+	BinId = list_to_binary(integer_to_list(Y*MaxX+X)),
 	IdPrefix = <<"wall">>,
 	hs_map_store:add_entity(Map, <<IdPrefix/binary, BinId/binary>>, <<"wall">>, {X,Y}, true),
 	load_collision_layer(CollisionLayer, Map, {X+1,Y}, MaxX, MaxY);
@@ -56,7 +56,7 @@ load_object_layer(_Map, [], _ObjectType, _Id, _TileWidth, _TileHeight) ->
 	ok;
 load_object_layer(Map, ObjectLayer, ObjectType, Id, TileWidth, TileHeight) ->
 	[Object|Rest] = ObjectLayer,
-	BinId = erlang:integer_to_binary(Id, 10),
+	BinId = list_to_binary(integer_to_list(Id)),
 	CompletebinId = <<ObjectType/binary, BinId/binary>>,
 	hs_map_store:add_entity(Map, CompletebinId, ObjectType, get_object_position(Object), false),
 	load_object_layer(Map, Rest, ObjectType, Id+1, TileWidth, TileHeight).
