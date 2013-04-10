@@ -1,6 +1,5 @@
 -module(hs_websocket_handler).
--behaviour(cowboy_http_handler).
--behaviour(cowboy_http_websocket_handler).
+-behaviour(cowboy_websocket_handler).
 
 % Behaviour cowboy_http_handler
 -export([init/3, handle/2, terminate/2]).
@@ -16,7 +15,7 @@ init({tcp, http}, _Req, _Opts) ->
 %	lager:debug("Request: ~p", [Req]),
 % "upgrade" every request to websocket,
 % we're not interested in serving any other content.
-	{upgrade, protocol, cowboy_http_websocket}.
+	{upgrade, protocol, cowboy_websocket}.
 
 % Should never get here.
 handle(Req, State) ->
@@ -32,8 +31,8 @@ terminate(_Req, _State) ->
 % Called for every new websocket connection.
 websocket_init(_Any, Req, []) ->
 	lager:debug("New client"),
-	Req2 = cowboy_http_req:compact(Req),
-	{ok, Req2, undefined, hibernate}.
+	%Req2 = cowboy_http_req:compact(Req),
+	{ok, Req, undefined, hibernate}.
 
 % Called when a text message arrives.
 websocket_handle({text, Msg}, Req, State) ->

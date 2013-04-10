@@ -22,8 +22,8 @@ handle_event({pick_object, ClientData, Data}, State) ->
 	maybe_give_points(ObjectType, hs_map_store:delete_entity_check_type(State#state.map, ObjectId, ObjectType), ClientData),
 	{ok, State};
 
-handle_event(_Event, State) ->
-	lager:debug("hs_rules_enforcement: handle_event.."),
+handle_event(Event, State) ->
+	%lager:debug("hs_rules_enforcement: handle_event ~p ..",[Event]),
 	{ok, State}.
 
 handle_call(_Request, State) ->
