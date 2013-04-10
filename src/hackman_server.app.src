@@ -3,7 +3,7 @@
     {vsn, "1"},
     {registered, []},
     {applications, [
-        kernel, sasl, stdlib, crypto, cowboy, compiler, lager, syntax_tools, jsx
+        kernel, sasl, stdlib, crypto, compiler, syntax_tools, lager, ranch, cowboy, jsx
     ]},
     {mod, { hackman_server_app, []}},
     {env, []}

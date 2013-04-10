@@ -12,7 +12,13 @@ compile:
 get-deps:
 	./rebar get-deps
 
-clean:
+delete-deps:
+	./rebar delete-deps
+
+update-deps:
+	./rebar update-deps
+
+clean: delete-deps
 	./rebar clean
 
 $(APP).boot: $(APP).rel Makefile
