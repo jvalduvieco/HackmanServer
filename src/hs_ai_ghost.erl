@@ -172,10 +172,10 @@ velocity_vector_choose_from_list([{_, VelocityVector} | _], _) ->
 distance({PosX, PosY}, {TargetCoordX, TargetCoordY}) ->
   math:sqrt(math:pow(TargetCoordX-PosX, 2) + math:pow(TargetCoordY-PosY, 2)).
 
-calculate_velocity_vector({CoordPosX, Same}, {CurrentCoordX, Same}) when CoordPosX>=CurrentCoordX -> {-?HS_AI_GHOST_SPEED,  0};
-calculate_velocity_vector({CoordPosX, Same}, {CurrentCoordX, Same}) when CoordPosX< CurrentCoordX -> { ?HS_AI_GHOST_SPEED,  0};
-calculate_velocity_vector({Same, CoordPosY}, {Same, CurrentCoordY}) when CoordPosY>=CurrentCoordY -> { 0, -?HS_AI_GHOST_SPEED};
-calculate_velocity_vector({Same, CoordPosY}, {Same, CurrentCoordY}) when CoordPosY< CurrentCoordY -> { 0,  ?HS_AI_GHOST_SPEED}.
+calculate_velocity_vector({CurrentCoordX, Same}, {CoordPosX, Same}) when CoordPosX>=CurrentCoordX -> {-?HS_AI_GHOST_SPEED,  0};
+calculate_velocity_vector({CurrentCoordX, Same}, {CoordPosX, Same}) when CoordPosX< CurrentCoordX -> { ?HS_AI_GHOST_SPEED,  0};
+calculate_velocity_vector({Same, CurrentCoordY}, {Same, CoordPosY}) when CoordPosY>=CurrentCoordY -> { 0, -?HS_AI_GHOST_SPEED};
+calculate_velocity_vector({Same, CurrentCoordY}, {Same, CoordPosY}) when CoordPosY< CurrentCoordY -> { 0,  ?HS_AI_GHOST_SPEED}.
 
 translate_coord_to_tile({X, Y}) ->
   TileX = erlang:round(X/32),
