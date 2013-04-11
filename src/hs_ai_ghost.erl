@@ -3,9 +3,7 @@
 -author("jllonch").
 
 %% Test
-%% Map = hs_file_map_loader:load("priv/level0.json").
-%% hs_ai_ghost:start_link({1, {16, 16}, Map, {21*32, 23*32}}).
-
+%% Map = hs_file_map_loader:load("priv/level0.json"). hs_ai_ghost:start_link({1, {32, 64}, Map, {21*32, 23*32}}).
 -behaviour(gen_fsm).
 
 %% Config
