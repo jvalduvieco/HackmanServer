@@ -13,10 +13,10 @@ before_test() ->
   ok.
 
 test_initialize() ->
-  {ok, _Map} = hs_map_store:initialize().
+  {ok, _Map} = hs_map_store:init().
 
 test_insert() ->
-  {ok, Map} = hs_map_store:initialize(),
+  {ok, Map} = hs_map_store:init(),
   Id = 1,
   Entity = {test, entity, {1, 2, 3}},
   X = 10,

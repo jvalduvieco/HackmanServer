@@ -40,7 +40,7 @@ websocket_handle({text, Msg}, Req, State) ->
 	Decoded = jsx:decode(Msg),
 	%%lager:debug("Decoded: ~p",[Decoded]),
 	{Type, Session} = get_metadata(Decoded),
-	{Action, Response, NewState} = hs_messages:handle(Type, {Session, self()}, remove_metadata(Decoded), State),
+	{Action, Response, NewState} = hs_messages:handle(Type, hs_client_handle:create(Session, self()), remove_metadata(Decoded), State),
 	translate_to_websocket_response(Action, Response, Req, NewState);
 
 % With this callback we can handle other kind of

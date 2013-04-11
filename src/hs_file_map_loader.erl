@@ -62,7 +62,7 @@ load_object_layer(Map, ObjectLayer, ObjectType, Id, TileWidth, TileHeight) ->
 	load_object_layer(Map, Rest, ObjectType, Id+1, TileWidth, TileHeight).
 
 load(FileName) ->
-	{ok, MapStore} = hs_map_store:initialize(),
+	{ok, MapStore} = hs_map_store:init(),
 	MapData = decode(FileName),
 	MapHeight = get_map_property(MapData, <<"height">>),
 	MapWidth = get_map_property(MapData, <<"width">>),

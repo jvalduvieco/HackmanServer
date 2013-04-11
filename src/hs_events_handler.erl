@@ -15,8 +15,9 @@ init(Parameters) ->
 	WebsocketPid = proplists:get_value(websocket_pid, Parameters, none),
 	{ok, #state{session_id = SessionId, websocket_pid = WebsocketPid}}.
 
-handle_event({position_update, {Session, _ClientGatewayPid}, Data}, State) ->
+handle_event({position_update, ClientHandle, Data}, State) ->
 	MySession = State#state.session_id,
+	Session = hs_client_handle:get_session(ClientHandle),
 	case Session of
 		MySession ->
 			ok;
@@ -24,22 +25,26 @@ handle_event({position_update, {Session, _ClientGatewayPid}, Data}, State) ->
 			State#state.websocket_pid ! {reply, [{<<"type">>, <<"positionUpdateAnnounce">>} | Data]}
 	end,
 	{ok, State};
-handle_event({pick_object, {Session, _ClientGatewayPid}, Data}, State) ->
+handle_event({pick_object, ClientHandle, Data}, State) ->
 	MySession = State#state.session_id,
+	Session = hs_client_handle:get_session(ClientHandle),
 	case Session of
 		MySession ->
 			ok;
 		_OtherSessionId ->
+			%TODO: Check wether it is better to use | or ++ for list concatenation
 			State#state.websocket_pid ! {reply, [{<<"type">>, <<"pickObjectAnnounce">>} | Data]}
 	end,
 	{ok, State};
-handle_event({new_player, {Session, _ClientGatewayPid}, PlayerData}, State) ->
+handle_event({new_player,ClientHandle, PlayerData}, State) ->
 	MySession = State#state.session_id,
+	Session = hs_client_handle:get_session(ClientHandle),
 	case Session of
 		MySession ->
 			ok;
 		_OtherSessionId ->
-			State#state.websocket_pid ! {reply, [{<<"type">>, <<"newPlayerAnnounce">>},{<<"sessionId">>, Session}] ++ PlayerData}
+			State#state.websocket_pid ! {reply,
+				[{<<"type">>, <<"newPlayerAnnounce">>},{<<"sessionId">>, Session}] ++ PlayerData}
 	end,
 	{ok, State};
 handle_event({start_game}, State) ->

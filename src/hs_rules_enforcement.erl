@@ -16,13 +16,13 @@ init(Args) ->
 	Map = hs_file_map_loader:load(hs_config:get(map_file)),
 	{ok, #state{map=Map}}.
 
-handle_event({pick_object, ClientData, Data}, State) ->
+handle_event({pick_object, ClientHandle, Data}, State) ->
 	ObjectId = proplists:get_value(<<"objectId">>, Data),
 	ObjectType = proplists:get_value(<<"objectType">>, Data),
-	maybe_give_points(ObjectType, hs_map_store:delete_entity_check_type(State#state.map, ObjectId, ObjectType), ClientData),
+	maybe_give_points(ObjectType, hs_map_store:delete_entity_check_type(State#state.map, ObjectId, ObjectType), ClientHandle),
 	{ok, State};
 
-handle_event(Event, State) ->
+handle_event(_Event, State) ->
 	%lager:debug("hs_rules_enforcement: handle_event ~p ..",[Event]),
 	{ok, State}.
 
@@ -45,7 +45,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 maybe_give_points(_ObjectType, NumberOfObjects, Player) when NumberOfObjects =:= 0 ->
 	lager:info("A player picked an already picked object. {player:~p, Objects: ~p", [Player, NumberOfObjects]);
-maybe_give_points(<<"dots">>, _NumberOfObjects, {_Session, ClientGatewayPid}) ->
-	ClientGatewayPid ! {reply, [{<<"type">>, <<"updatePointsAnnounce">>}, {<<"amount">>, 100}]};
-maybe_give_points(<<"magicdots">>, _NumberOfObjects, {_Session, ClientGatewayPid}) ->
-	ClientGatewayPid ! {reply, [{<<"type">>, <<"updatePointsAnnounce">>}, {<<"amount">>, 500}]}.
+maybe_give_points(<<"dots">>, _NumberOfObjects, ClientHandle) ->
+	hs_client_handle:get_gateway_pid(ClientHandle) ! {reply, [{<<"type">>, <<"updatePointsAnnounce">>}, {<<"amount">>, 100}]};
+maybe_give_points(<<"magicdots">>, _NumberOfObjects, ClientHandle) ->
+	hs_client_handle:get_gateway_pid(ClientHandle) ! {reply, [{<<"type">>, <<"updatePointsAnnounce">>}, {<<"amount">>, 500}]}.
