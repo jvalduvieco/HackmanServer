@@ -31,6 +31,7 @@ start_link({Id, {X, Y}, Map, {MapWidth, MapHeight}}) ->
   pos=none, % {X, Y}
   velocity_vector=none, % {X, Y}
   target_coord=none, % {X, Y}
+  target_id=none,
   map_width,
   map_height,
   timer_ref_status=none,
@@ -38,15 +39,18 @@ start_link({Id, {X, Y}, Map, {MapWidth, MapHeight}}) ->
 }).
 
 init({Id, {X, Y}, Map, {MapWidth, MapHeight}}) ->
-  lager:debug("initializing ai ghost..."),
+  lager:debug("initializing ghost ai..."),
   <<A:32, B:32, C:32>> = crypto:rand_bytes(12),
   random:seed({A,B,C}),
-  State = #state{id=Id, pos={X, Y}, map_handle=Map, map_width=MapWidth, map_height=MapHeight},
+  StateInit = #state{id=Id, pos={X, Y}, map_handle=Map, map_width=MapWidth, map_height=MapHeight},
+  State = choose_target_quadrant(StateInit),
   % make decision
-  NewState = make_decision(State),
+  DecisionState = make_decision(State),
+  % status timer
+  StatusTimerState = create_status_timer(DecisionState),
   % move timer
-  NewStateMove = create_move_timer(NewState),
-  {ok, search, NewStateMove}.
+  NewState = create_move_timer(StatusTimerState),
+  {ok, search, NewState}.
 
 %% ---------------------------------------------------
 %% State: search
@@ -58,7 +62,9 @@ search({timeout, _Ref, move_timeout}, State) ->
   {next_state, search, NewState};
 search({timeout, _Ref, status_timeout}, State) ->
   lager:debug("[search] status_timeout"),
-  NewState = make_decision(State#state{target_coord=none}),
+  StateChooseTarget = choose_target_pacman(State),
+  StateDecision = make_decision(StateChooseTarget),
+  NewState = create_status_timer(StateDecision),
   {next_state, pursue, NewState}.
 
 search(_Event, _From, State) ->
@@ -69,12 +75,15 @@ search(_Event, _From, State) ->
 %% ---------------------------------------------------
 pursue({timeout, _Ref, move_timeout}, State) ->
   lager:debug("[pursue] move_timeout"),
-  StateMove = move(State),
+  StateRecalculateTargetCoords = recalculate_target_coord_pacman(State),
+  StateMove = move(StateRecalculateTargetCoords),
   NewState = create_move_timer(StateMove),
   {next_state, pursue, NewState};
 pursue({timeout, _Ref, status_timeout}, State) ->
   lager:debug("[pursue] status_timeout"),
-  NewState = make_decision(State#state{target_coord=none}),
+  StateChooseTarget = choose_target_quadrant(State),
+  StateDecision = make_decision(StateChooseTarget),
+  NewState = create_status_timer(StateDecision),
   {next_state, search, NewState}.
 
 pursue(_Event, _From, State) ->
@@ -105,6 +114,12 @@ create_move_timer(State) ->
   TimerRef = gen_fsm:start_timer(?HS_AI_GHOST_MOVE_TIME, move_timeout),
   State#state{timer_ref_movement=TimerRef}.
 
+create_status_timer(State) when State#state.timer_ref_status=/=none ->
+  create_status_timer(State#state{timer_ref_status=none});
+create_status_timer(State) ->
+  TimerRef = gen_fsm:start_timer(?HS_AI_GHOST_SEARCHING_TIMEOUT, status_timeout),
+  State#state{timer_ref_status=TimerRef}.
+
 move(State) ->
   {VelocityVectorX, VelocityVectorY} = State#state.velocity_vector,
   {PosX, PosY} = State#state.pos,
@@ -113,7 +128,7 @@ move(State) ->
   StateMove = State#state{pos=NewPos},
   make_decision(StateMove).
 
-make_decision(State) when State#state.target_coord==none ->
+choose_target_quadrant(State) ->
   % choose a quadrant
   TargetCoord = case random:uniform(4) of
     1 -> {State#state.map_width, 0};
@@ -121,32 +136,44 @@ make_decision(State) when State#state.target_coord==none ->
     3 -> {0, State#state.map_height};
     4 -> {0, 0}
   end,
-  NewState = State#state{target_coord=TargetCoord},
-  make_decision(NewState);
-make_decision(State) when State#state.timer_ref_status=/=none ->
-  % destroy timer
-  gen_fsm:cancel_timer(State#state.timer_ref_status),
-  NewState = State#state{timer_ref_status=none},
-  make_decision(NewState);
+  State#state{target_coord=TargetCoord, target_id=none}.
+
+choose_target_pacman(State) ->
+  % TODO
+%%   PacmanLists = hs_map_store:get_entities_by_type(State#state.map_handle, <<"pacman">>),
+%%   Pacman = lists:nth(random:uniform(length(PacmanLists)), PacmanLists),
+%%   [{<<"x">>, X}, {<<"y">>, Y}, {<<"id">>, Id}, {<<"type">>, _Type}] = Pacman,
+  X = 10,
+  Y = 10,
+  Id = 1,
+  State#state{target_coord={X,Y}, target_id=Id}.
+
+recalculate_target_coord_pacman(State) ->
+  % TODO
+%%   [Pacman|_] = hs_map_store:get_entities_by_id(State#state.map_handle, State#state.target_id),
+%%   [{<<"x">>, X}, {<<"y">>, Y}, {<<"id">>, _Id}, {<<"type">>, _Type}] = Pacman,
+  X = 100,
+  Y = 100,
+  State#state{target_coord={X,Y}}.
+
+
 make_decision(State) ->
   lager:debug("make_decision"),
   % set speed vector
   VelocityVector = velocity_vector(State#state.map_handle, State#state.pos, State#state.target_coord, State#state.velocity_vector),
   lager:debug("make_decision: ~p", [VelocityVector]),
-  % create searching timer
-  TimerSearchingRef = gen_fsm:start_timer(?HS_AI_GHOST_SEARCHING_TIMEOUT, status_timeout),
   % return new state
-  State#state{timer_ref_status=TimerSearchingRef, velocity_vector=VelocityVector}.
+  State#state{velocity_vector=VelocityVector}.
 
 velocity_vector(MapHandle, Pos, TargetCoord, CurrentVelocityVector) ->
-  lager:debug("  Pos: ~p", [Pos]),
-  lager:debug("  TargetCoord: ~p", [TargetCoord]),
-  lager:debug("  CurrentVelocityVector: ~p", [CurrentVelocityVector]),
   {X, Y} = translate_coord_to_tile(Pos),
   {ok, ListTilePositions} = hs_map_store:free_move_positions(MapHandle, {X, Y}),
-  lager:debug("  ListTilePositions: ~p", [ListTilePositions]),
   TilePos = translate_coord_to_tile(Pos),
   TileTarget = translate_coord_to_tile(TargetCoord),
+%%   lager:debug("  CurrentVelocityVector: ~p", [CurrentVelocityVector]),
+%%   lager:debug("  ListTilePositions: ~p", [ListTilePositions]),
+%%   lager:debug("  Pos: ~p", [Pos]),
+%%   lager:debug("  TargetCoord: ~p", [TargetCoord]),
   lager:debug("  TilePos: ~p", [TilePos]),
   lager:debug("  TileTarget: ~p", [TileTarget]),
   velocity_vector_choose(TilePos, ListTilePositions, TileTarget, CurrentVelocityVector).
@@ -181,11 +208,6 @@ translate_coord_to_tile({X, Y}) ->
   TileX = erlang:round(X/32),
   TileY = erlang:round(Y/32),
   {TileX, TileY}.
-
-translate_tile_to_coord({TileX, TileY}) ->
-  X = TileX*32,
-  Y = TileY*32,
-  {X, Y}.
 
 reverse_vector(none) ->
   none;
