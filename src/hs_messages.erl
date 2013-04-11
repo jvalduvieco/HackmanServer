@@ -15,7 +15,7 @@ handle(<<"newPlayer">>, From, Message, State) ->
 	{reply, [{<<"statusCode">>, 200},
 		{<<"type">>,<<"newPlayerResponse">>}], State};
 handle(<<"getPlayers">>, _From, _Message, State) ->
-	List = hs_player_list:list_players(),
+	List = hs_game_controller:list_players(),
 	{reply, [{<<"statusCode">>, 200},
 		{<<"type">>,<<"getPlayersResponse">>},
 		{<<"list">>, List}],

@@ -3,14 +3,18 @@
 -author("jordillonch").
 
 %% API
--export([initialize/0, add_entity/5, delete_entity_check_type/3, get_entities/2, get_entities_by_type/2, get_entities_by_id/2, is_solid/2, free_move_positions/2]).
+-export([init/0, add_entity/5, delete_entity_check_type/3, get_entities/2,
+	get_entities_by_type/2, is_solid/2, free_move_positions/2]).
+
+%% TODO: Refactor this into a service
+%% TODO: Make ETS private
 
 %% returns a new map object
-initialize() ->
+init() ->
   % Create a new ETS table, called from supervisor
   Id = make_ref(),
   TableName = namespace(Id),
-  ets:new(TableName,[bag, public, named_table, {write_concurrency, true}]),
+  ets:new(TableName,[bag, public, named_table, {write_concurrency, true}, {read_concurrency, true}]),
   {ok, {TableName}}.
 
 %% add an entity to the map
@@ -44,16 +48,9 @@ get_entities_by_type(MapHandle, Type) ->
 	Result =[[{<<"x">>, X}, {<<"y">>, Y}, {<<"id">>, Id}, {<<"type">>, Type}]||[X,Y,Id] <- MatchResult],
 	{ok, Result}.
 
-get_entities_by_id(MapHandle, Id) ->
-	TableName = get_table_name(MapHandle),
-	MatchResult = ets:select(TableName, [{{{'$1','$2'},{Id,'$3','_'}},[],[['$1','$2','$3']]}]),
-	Result =[[{<<"x">>, X}, {<<"y">>, Y}, {<<"id">>, Id}, {<<"type">>, Type}]||[X,Y,Type] <- MatchResult],
-	{ok, Result}.
-
 is_solid(MapHandle, {X, Y}) ->
   {ok, List} = get_entities(MapHandle, {X, Y}),
   Result = [1 || {_, _, IsSolid} <- List, IsSolid =:= true],
-%%   lager:debug("is_solid: (~p) ~p => ~p", [{X,Y}, List, Result]),
   case Result of
     [] -> false;
     _ -> true
@@ -75,10 +72,9 @@ free_move_positions(MapHandle, {X, Y}) ->
   Result = [Coords || {Coords, IsSolid} <- List, IsSolid =:= false],
   {ok, Result}.
 
-
 namespace(Id) ->
   list_to_atom("hs_map_store_" ++ erlang:ref_to_list(Id)).
 
 get_table_name(MapHandle) ->
-  {TableName} = MapHandle,
-  TableName.
+	{TableName} = MapHandle,
+	TableName.
