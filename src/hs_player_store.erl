@@ -24,15 +24,13 @@ update_player_position(PlayerStoreHandle, Key, Position) ->
 get_player_position(PlayerStoreHandle, Key) ->
 	TableName = get_table_name(PlayerStoreHandle),
 	% FIXME replace by a lookup?
-	[MatchResult] = ets:select(TableName, [{{Key, '$2', '_', '_'},[],['$2']}]),
-	MatchResult.
+	ets:lookup_element(TableName, Key ,2).
 list_players(PlayerStoreHandle) ->
 	TableName = get_table_name(PlayerStoreHandle),
-	%ets:match(TableName, {'$1','$2','$3'}).
-	ets:select(TableName, [{{'$1', '$2', '$3', '$4'},[],['$1','$2','$3', '$4']}]).
+	ets:select(TableName, [{{'_', '_', '_', '$1'}, [], ['$1']}]).
 list_players_by_type(PlayerStoreHandle, PlayerType) ->
 	TableName = get_table_name(PlayerStoreHandle),
-	ets:select(TableName, [{{'$1', '$2', PlayerType, '$3'},[],['$3']}]).
+	ets:select(TableName, [{{'$1', '$2', PlayerType, '$3'}, [], ['$3']}]).
 
 namespace(Id) ->
 	list_to_atom("hs_players_store_" ++ erlang:ref_to_list(Id)).
