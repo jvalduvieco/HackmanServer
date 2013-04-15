@@ -29,6 +29,7 @@ list_players(PlayerStoreHandle) ->
 	TableName = get_table_name(PlayerStoreHandle),
 	ets:select(TableName, [{{'_', '_', '_', '$1'}, [], ['$1']}]).
 list_players_by_type(PlayerStoreHandle, PlayerType) ->
+	% FIXME Maybe, create an index table to search by PlayerType
 	TableName = get_table_name(PlayerStoreHandle),
 	ets:select(TableName, [{{'$1', '$2', PlayerType, '$3'}, [], ['$3']}]).
 
