@@ -18,17 +18,17 @@ handle(<<"getPlayers">>, _From, _Message, State) ->
 	List = hs_game_controller:list_players(),
 	{reply, [{<<"statusCode">>, 200},
 		{<<"type">>,<<"getPlayersResponse">>},
-		{<<"list">>, List}],
+		{<<"data">>,List}],
 		State};
 handle(<<"getObjects">>, _From, _Message, State) ->
 	List = hs_game_controller:get_objects(),
 	{reply, [{<<"statusCode">>, 200},
 		{<<"type">>,<<"getObjectsResponse">>},
-		{<<"list">>, List}],
+		{<<"data">>, List}],
 		State};
 handle(<<"ping">>, _From, Message, State) ->
 	{reply, [{<<"statusCode">>, 200},
-		{<<"type">>,<<"pong">>} | Message ],
+		{<<"type">>,<<"pong">>}, {<<"data">>, Message}],
 		State};
 handle(<<"positionUpdate">>, Session, Message, State)->
 	ok = hs_game_controller:position_update(Session, Message),

@@ -38,10 +38,15 @@ pick_object(Session, Message) ->
 init([]) ->
 	Map = hs_file_map_loader:load(hs_config:get(map_file)),
 	{ok, PlayerStore} = hs_player_store:init(),
-	gen_event:start_link({local, hs_game_event_manager}),
+	{ok, GameEventManagerPid} = gen_event:start_link({local, hs_game_event_manager}),
 	% FIXME: Add a supervised event handler
 	ok = gen_event:add_handler(hs_game_event_manager, hs_rules_enforcement, []),
-	{ok, waiting, #state{map=Map, player_store=PlayerStore}}.
+	% Add IA's
+	Session = 0,
+	PlayerId = <<"GhostAI0">>,
+	PlayerData = [{<<"sessionId">>, Session},{<<"playerId">>, PlayerId}, {<<"type">>, <<"ghostAI">>}] ,
+	{ok, _AiPid} = hs_ai_ghost:start_link({Session, {32, 96}, Map, {20, 22}, PlayerData, PlayerStore, GameEventManagerPid}),
+	{ok, waiting, #state{map=Map, player_store=PlayerStore, next_session = Session + 1}}.
 handle_sync_event(_Event, _From, _StateName, State) ->
 	lager:debug("hs_game_controller: handle_sync_event.."),
 	{stop, unimplemented, State}.
@@ -88,8 +93,10 @@ waiting({start_game}, State) ->
 
 playing({position_update, ClientHandle, PlayerData}, State) ->
 	PlayerStore = State#state.player_store,
-
-	hs_player_store:update_player_position(PlayerStore, hs_client_handle:get_session(ClientHandle), PlayerData),
+	Position = proplists:get_value(<<"pos">>, PlayerData),
+	PositionX = proplists:get_value(<<"x">>, Position),
+	PositionY = proplists:get_value(<<"y">>, Position),
+	hs_player_store:update_player_position(PlayerStore, hs_client_handle:get_session(ClientHandle), {PositionX, PositionY}),
 	gen_event:notify(hs_game_event_manager, {position_update, ClientHandle, PlayerData}),
 	{next_state, playing, State};
 playing({pick_object, ClientHandle, Data}, State) ->

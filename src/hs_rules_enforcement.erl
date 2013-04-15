@@ -46,6 +46,7 @@ code_change(_OldVsn, State, _Extra) ->
 maybe_give_points(_ObjectType, NumberOfObjects, Player) when NumberOfObjects =:= 0 ->
 	lager:info("A player picked an already picked object. {player:~p, Objects: ~p", [Player, NumberOfObjects]);
 maybe_give_points(<<"dots">>, _NumberOfObjects, ClientHandle) ->
-	hs_client_handle:get_gateway_pid(ClientHandle) ! {reply, [{<<"type">>, <<"updatePointsAnnounce">>}, {<<"amount">>, 100}]};
+	hs_client_handle:get_gateway_pid(ClientHandle) ! {reply, [{<<"type">>, <<"updatePointsAnnounce">>}, {<<"data">>, [{<<"amount">>, 100}]}]};
 maybe_give_points(<<"magicdots">>, _NumberOfObjects, ClientHandle) ->
-	hs_client_handle:get_gateway_pid(ClientHandle) ! {reply, [{<<"type">>, <<"updatePointsAnnounce">>}, {<<"amount">>, 500}]}.
+	hs_client_handle:get_gateway_pid(ClientHandle) ! {reply, [{<<"type">>, <<"updatePointsAnnounce">>},
+		{<<"data">>,[{<<"amount">>, 500}]}]}.

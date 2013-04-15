@@ -11,55 +11,77 @@
 -define(HS_AI_GHOST_SPEED, 10).
 -define(HS_AI_GHOST_MOVE_TIME, 100).
 
-%% API
--export([start_link/1]).
-
-%% gen_fsm
--export([init/1, search/2, search/3, pursue/2, pursue/3, handle_event/3,
-  handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
-
-%% API
-start_link({Id, {X, Y}, Map, {MapWidth, MapHeight}}) ->
-  gen_fsm:start_link(?MODULE, {Id, {X, Y}, Map, {MapWidth, MapHeight}}, []).
-
 %% gen_fsm callbacks
+-export([init/1, handle_event/3, handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
+%% States
+-export([waiting/2, search/2, search/3, pursue/2, pursue/3]).
+%% Public API
+-export([start_link/1]).
+-export([start_game/1, killed/1, end_game/1]).
+
+%% State
 -record(state, {
-  id,
+	session,
   map_handle,
-  pos=none, % {X, Y}
-  velocity_vector=none, % {X, Y}
-  target_coord=none, % {X, Y}
-  target_id=none,
+  pos = none, % {X, Y}
+  velocity_vector = none, % {X, Y}
+  target_coord = none, % {X, Y}
+  target_id = none,
   map_width,
   map_height,
-  timer_ref_status=none,
-  timer_ref_movement=none
+  timer_ref_status = none,
+  timer_ref_movement = none,
+	player_data = none,
+	player_store = none,
+	game_event_manager_pid = none
 }).
 
-init({Id, {X, Y}, Map, {MapWidth, MapHeight}}) ->
+%% API
+start_link({Id, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, GameEventManagerPid}) ->
+	gen_fsm:start_link(?MODULE, {Id, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, GameEventManagerPid}, []).
+
+%% Public API
+start_game(GhostAIPid) ->
+	gen_fsm:send_event(GhostAIPid, {start_game}).
+end_game(GhostAIPid) ->
+	gen_fsm:send_event(GhostAIPid, {end_game}).
+killed(GhostAIPid) ->
+	gen_fsm:send_event(GhostAIPid, {killed}).
+
+%% Callbacks
+init({Session, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, GameEventManagerPid}) ->
   lager:debug("initializing ghost ai..."),
   <<A:32, B:32, C:32>> = crypto:rand_bytes(12),
   random:seed({A,B,C}),
-  StateInit = #state{id=Id, pos={X, Y}, map_handle=Map, map_width=MapWidth, map_height=MapHeight},
-  State = choose_target_quadrant(StateInit),
-  % make decision
-  DecisionState = make_decision(State),
-  % status timer
-  StatusTimerState = create_status_timer(DecisionState),
-  % move timer
-  NewState = create_move_timer(StatusTimerState),
-  {ok, search, NewState}.
+	hs_player_store:add_player(PlayerStore, Session, PlayerData),
+	ok = gen_event:add_handler(hs_game_event_manager, hs_ai_ghost_events_handler, erlang:self()),
+  StateInit = #state{session = Session, pos={X, Y}, map_handle = Map, map_width = MapWidth, map_height = MapHeight,
+  player_data = PlayerData, player_store = PlayerStore, game_event_manager_pid = GameEventManagerPid},
+  {ok, waiting, StateInit}.
 
+%% gen_fsm callbacks
+%% ---------------------------------------------------
+%% State: waiting
+%% ---------------------------------------------------
+waiting({start_game}, State) ->
+	TargetState = choose_target_quadrant(State),
+% status timer
+	StatusTimerState = create_status_timer(TargetState),
+% move timer
+	TimerState = create_move_timer(StatusTimerState),
+% make decision
+	NewState = make_decision(TimerState),
+	{next_state, search, NewState}.
 %% ---------------------------------------------------
 %% State: search
 %% ---------------------------------------------------
 search({timeout, _Ref, move_timeout}, State) ->
-  lager:debug("[search] move_timeout"),
+  %lager:debug("[search] move_timeout"),
   StateMove = move(State),
   NewState = create_move_timer(StateMove),
   {next_state, search, NewState};
 search({timeout, _Ref, status_timeout}, State) ->
-  lager:debug("[search] status_timeout"),
+  %lager:debug("[search] status_timeout"),
   StateChooseTarget = choose_target_pacman(State),
   StateDecision = make_decision(StateChooseTarget),
   NewState = create_status_timer(StateDecision),
@@ -72,13 +94,13 @@ search(_Event, _From, State) ->
 %% State: pursue
 %% ---------------------------------------------------
 pursue({timeout, _Ref, move_timeout}, State) ->
-  lager:debug("[pursue] move_timeout"),
+  %lager:debug("[pursue] move_timeout"),
   StateRecalculateTargetCoords = recalculate_target_coord_pacman(State),
   StateMove = move(StateRecalculateTargetCoords),
   NewState = create_move_timer(StateMove),
   {next_state, pursue, NewState};
 pursue({timeout, _Ref, status_timeout}, State) ->
-  lager:debug("[pursue] status_timeout"),
+  %lager:debug("[pursue] status_timeout"),
   StateChooseTarget = choose_target_quadrant(State),
   StateDecision = make_decision(StateChooseTarget),
   NewState = create_status_timer(StateDecision),
@@ -120,9 +142,15 @@ create_status_timer(State) ->
 
 move(State) ->
   {VelocityVectorX, VelocityVectorY} = State#state.velocity_vector,
-  {PosX, PosY} = State#state.pos,
-  NewPos = {PosX+VelocityVectorX, PosY+VelocityVectorY},
-  lager:debug("move: ~p", [NewPos]),
+  {OriginalPosX, OriginalPosY} = State#state.pos,
+  NewPos = {OriginalPosX+VelocityVectorX, OriginalPosY+VelocityVectorY},
+  %lager:debug("move: ~p", [NewPos]),
+	{NewPosX, NewPosY}  = NewPos,
+	Velocity = {<<"vel">>,[{<<"x">>,VelocityVectorX},{<<"y">>,VelocityVectorY}]},
+	Position = {<<"pos">>,[{<<"x">>,NewPosX},{<<"y">>,NewPosY}]},
+	ClientHandle=hs_client_handle:init(State#state.session, self()),
+	gen_event:notify(State#state.game_event_manager_pid, {position_update, ClientHandle, State#state.player_data ++
+		[Velocity , Position]}),
   StateMove = State#state{pos=NewPos},
   make_decision(StateMove).
 
@@ -141,25 +169,24 @@ choose_target_pacman(State) ->
 %%   PacmanLists = hs_map_store:get_entities_by_type(State#state.map_handle, <<"pacman">>),
 %%   Pacman = lists:nth(random:uniform(length(PacmanLists)), PacmanLists),
 %%   [{<<"x">>, X}, {<<"y">>, Y}, {<<"id">>, Id}, {<<"type">>, _Type}] = Pacman,
-  X = 10,
-  Y = 10,
   Id = 1,
-  State#state{target_coord={X,Y}, target_id=Id}.
+	PlayerPosition = hs_player_store:get_player_position(State#state.player_store, Id),
+	%lager:debug("player_position: ~p",[PlayerPosition]),
+  State#state{target_coord=PlayerPosition, target_id=Id}.
 
 recalculate_target_coord_pacman(State) ->
   % TODO
 %%   [Pacman|_] = hs_map_store:get_entities_by_id(State#state.map_handle, State#state.target_id),
 %%   [{<<"x">>, X}, {<<"y">>, Y}, {<<"id">>, _Id}, {<<"type">>, _Type}] = Pacman,
-  X = 100,
-  Y = 100,
-  State#state{target_coord={X,Y}}.
+	PlayerPosition = hs_player_store:get_player_position(State#state.player_store, State#state.target_id),
+  State#state{target_coord=PlayerPosition}.
 
 
 make_decision(State) ->
-  lager:debug("make_decision"),
+  %lager:debug("make_decision"),
   % set speed vector
   VelocityVector = velocity_vector(State#state.map_handle, State#state.pos, State#state.target_coord, State#state.velocity_vector),
-  lager:debug("make_decision: ~p", [VelocityVector]),
+  %lager:debug("make_decision: ~p", [VelocityVector]),
   % return new state
   State#state{velocity_vector=VelocityVector}.
 
@@ -172,8 +199,8 @@ velocity_vector(MapHandle, Pos, TargetCoord, CurrentVelocityVector) ->
 %%   lager:debug("  ListTilePositions: ~p", [ListTilePositions]),
 %%   lager:debug("  Pos: ~p", [Pos]),
 %%   lager:debug("  TargetCoord: ~p", [TargetCoord]),
-  lager:debug("  TilePos: ~p", [TilePos]),
-  lager:debug("  TileTarget: ~p", [TileTarget]),
+%  lager:debug("  TilePos: ~p", [TilePos]),
+%  lager:debug("  TileTarget: ~p", [TileTarget]),
   velocity_vector_choose(TilePos, ListTilePositions, TileTarget, CurrentVelocityVector).
 
 velocity_vector_choose(_, [CoordPosition|[]], _, _) ->
@@ -195,19 +222,19 @@ velocity_vector_choose_from_list([{_, VelocityVector} | _], _) ->
 
 
 distance({PosX, PosY}, {TargetCoordX, TargetCoordY}) ->
-  math:sqrt(math:pow(TargetCoordX-PosX, 2) + math:pow(TargetCoordY-PosY, 2)).
+  math:sqrt(math:pow(TargetCoordX - PosX, 2) + math:pow(TargetCoordY - PosY, 2)).
 
-calculate_velocity_vector({CurrentCoordX, Same}, {CoordPosX, Same}) when CoordPosX>=CurrentCoordX -> {-?HS_AI_GHOST_SPEED,  0};
-calculate_velocity_vector({CurrentCoordX, Same}, {CoordPosX, Same}) when CoordPosX< CurrentCoordX -> { ?HS_AI_GHOST_SPEED,  0};
-calculate_velocity_vector({Same, CurrentCoordY}, {Same, CoordPosY}) when CoordPosY>=CurrentCoordY -> { 0, -?HS_AI_GHOST_SPEED};
-calculate_velocity_vector({Same, CurrentCoordY}, {Same, CoordPosY}) when CoordPosY< CurrentCoordY -> { 0,  ?HS_AI_GHOST_SPEED}.
+calculate_velocity_vector({CurrentCoordX, Same}, {CoordPosX, Same}) when CoordPosX >= CurrentCoordX -> {-?HS_AI_GHOST_SPEED,  0};
+calculate_velocity_vector({CurrentCoordX, Same}, {CoordPosX, Same}) when CoordPosX < CurrentCoordX -> { ?HS_AI_GHOST_SPEED,  0};
+calculate_velocity_vector({Same, CurrentCoordY}, {Same, CoordPosY}) when CoordPosY >= CurrentCoordY -> { 0, -?HS_AI_GHOST_SPEED};
+calculate_velocity_vector({Same, CurrentCoordY}, {Same, CoordPosY}) when CoordPosY < CurrentCoordY -> { 0,  ?HS_AI_GHOST_SPEED}.
 
 translate_coord_to_tile({X, Y}) ->
-  TileX = erlang:round(X/32),
-  TileY = erlang:round(Y/32),
+  TileX = erlang:round(X / 32),
+  TileY = erlang:round(Y / 32),
   {TileX, TileY}.
 
 reverse_vector(none) ->
   none;
 reverse_vector({X, Y}) ->
-  {X*-1, Y*-1}.
+  {X * -1, Y * -1}.

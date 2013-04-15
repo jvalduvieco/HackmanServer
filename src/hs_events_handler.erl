@@ -22,7 +22,7 @@ handle_event({position_update, ClientHandle, Data}, State) ->
 		MySession ->
 			ok;
 		_OtherSessionId ->
-			State#state.websocket_pid ! {reply, [{<<"type">>, <<"positionUpdateAnnounce">>} | Data]}
+			State#state.websocket_pid ! {reply, [{<<"type">>, <<"positionUpdateAnnounce">>}, {<<"data">>, Data}]}
 	end,
 	{ok, State};
 handle_event({pick_object, ClientHandle, Data}, State) ->
@@ -33,7 +33,7 @@ handle_event({pick_object, ClientHandle, Data}, State) ->
 			ok;
 		_OtherSessionId ->
 			%TODO: Check wether it is better to use | or ++ for list concatenation
-			State#state.websocket_pid ! {reply, [{<<"type">>, <<"pickObjectAnnounce">>} | Data]}
+			State#state.websocket_pid ! {reply, [{<<"type">>, <<"pickObjectAnnounce">>}, {<<"data">>,  Data}]}
 	end,
 	{ok, State};
 handle_event({new_player,ClientHandle, PlayerData}, State) ->
@@ -44,7 +44,7 @@ handle_event({new_player,ClientHandle, PlayerData}, State) ->
 			ok;
 		_OtherSessionId ->
 			State#state.websocket_pid ! {reply,
-				[{<<"type">>, <<"newPlayerAnnounce">>},{<<"sessionId">>, Session}] ++ PlayerData}
+				[{<<"type">>, <<"newPlayerAnnounce">>}, {<<"data">>, [{<<"sessionId">>, Session}, PlayerData]}]}
 	end,
 	{ok, State};
 handle_event({start_game}, State) ->

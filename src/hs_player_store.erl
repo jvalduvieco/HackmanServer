@@ -12,26 +12,27 @@ init() ->
 	TableName = namespace(Id),
 	ets:new(TableName,[set, public, named_table, {write_concurrency, true},  {read_concurrency, true}]),
 	{ok, {TableName}}.
-add_player(MapHandle,Session, PlayerData) ->
-	TableName = get_table_name(MapHandle),
+add_player(UserStoreHandle,Session, PlayerData) ->
+	TableName = get_table_name(UserStoreHandle),
 	ets:insert(TableName,{Session,{none, none},PlayerData}).
-remove_player(MapHandle,SessionId) ->
-	TableName = get_table_name(MapHandle),
+remove_player(UserStoreHandle,SessionId) ->
+	TableName = get_table_name(UserStoreHandle),
 	ets:delete(TableName, SessionId).
-update_player_position(MapHandle, Key, Position) ->
-	TableName = get_table_name(MapHandle),
+update_player_position(UserStoreHandle, Key, Position) ->
+	TableName = get_table_name(UserStoreHandle),
 	ets:update_element(TableName, Key, {2, Position}).
-get_player_position(MapHandle, Key) ->
-	TableName = get_table_name(MapHandle),
+get_player_position(UserStoreHandle, Key) ->
+	TableName = get_table_name(UserStoreHandle),
 	[MatchResult] = ets:select(TableName, [{{Key, '$2', '_'},[],['$2']}]),
 	MatchResult.
-list_players(MapHandle) ->
-	TableName = get_table_name(MapHandle),
-	ets:match(TableName, {'_','$1'}).
+list_players(UserStoreHandle) ->
+	TableName = get_table_name(UserStoreHandle),
+	%ets:match(TableName, {'$1','$2','$3'}).
+	ets:select(TableName, [{{'$1', '$2', '$3'},[],['$1','$2','$3']}]).
 
 namespace(Id) ->
 	list_to_atom("hs_players_store_" ++ erlang:ref_to_list(Id)).
 
-get_table_name(MapHandle) ->
-	{TableName} = MapHandle,
+get_table_name(UserStoreHandle) ->
+	{TableName} = UserStoreHandle,
 	TableName.

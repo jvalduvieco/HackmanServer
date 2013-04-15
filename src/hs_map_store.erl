@@ -16,6 +16,7 @@ init() ->
   TableName = namespace(Id),
   ets:new(TableName,[bag, public, named_table, {write_concurrency, true}, {read_concurrency, true}]),
   {ok, {TableName}}.
+%% TODO: Add map properties as a proplist into the handle
 
 %% add an entity to the map
 %% if you want to creat walls you can add an empty entity that is collidable
