@@ -9,7 +9,10 @@
 %% Config
 -define(HS_AI_GHOST_SEARCHING_TIMEOUT, 10000).
 -define(HS_AI_GHOST_SPEED, 3).
--define(HS_AI_GHOST_MOVE_TIME, 10).
+-define(HS_AI_GHOST_MOVE_TIME, 16).
+%%FIXME Get from map handle
+-define(HS_TILE_HEIGHT, 32).
+-define(HS_TILE_WIDTH, 32).
 
 %% gen_fsm callbacks
 -export([init/1, handle_event/3, handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
@@ -135,15 +138,15 @@ code_change(_OldVsn, StateName, State, _Extra) ->
   {ok, StateName, State}.
 
 %% private functions
-maybe_announce(OldVelocity, CurrentVelocity, Position, State) when OldVelocity =:= CurrentVelocity ->
+maybe_announce(OldVelocity, CurrentVelocity, Position, State) when OldVelocity =/= CurrentVelocity ->
 	ClientHandle=hs_client_handle:init(State#state.session, self()),
 	{VelX, VelY} = CurrentVelocity,
-	{PosX, PosY} = Position,
+	{PosX, PosY} = normalize_coords(Position),
 	Velocity = {<<"vel">>, [{<<"x">>, VelX},{<<"y">>, VelY}]},
-	PositionFormatted = {<<"pos">>, [{<<"x">>, PosX},{<<"y">>, PosY}]},
-	lager:debug("Announcing ~p (~p)",[PositionFormatted, Velocity]),
+	PositionFormatted = {<<"pos">>, [{<<"x">>, PosX}, {<<"y">>, PosY}]},
+	lager:debug("Announcing ~p (~p , ~p)",[PositionFormatted, OldVelocity, CurrentVelocity]),
 	gen_event:notify(State#state.game_event_manager_pid,
-		{position_update, ClientHandle, State#state.player_data ++ [Velocity , PositionFormatted]});
+		{position_update, ClientHandle, State#state.player_data ++ [Velocity, PositionFormatted]});
 maybe_announce(_OldVelocity, _CurrentVelocity, _Position, _State) ->
 	ok.
 create_move_timer() ->
@@ -160,9 +163,9 @@ move(CurrentPosition, Velocity) ->
 choose_target_coords(MapWidth, MapHeight) ->
   % choose a quadrant
   case random:uniform(4) of
-    1 -> {MapWidth * 32, 0};
-    2 -> {MapWidth * 32, MapHeight * 32};
-    3 -> {0, MapWidth * 32};
+    1 -> {MapWidth * ?HS_TILE_WIDTH, 0};
+    2 -> {MapWidth * ?HS_TILE_WIDTH, MapHeight * ?HS_TILE_HEIGHT};
+    3 -> {0, MapHeight * ?HS_TILE_HEIGHT};
     4 -> {0, 0}
   end.
 
@@ -206,10 +209,13 @@ calculate_velocity_vector({Same, CurrentCoordY}, {Same, CoordPosY}) when CoordPo
 calculate_velocity_vector({Same, CurrentCoordY}, {Same, CoordPosY}) when CoordPosY < CurrentCoordY -> { 0,  ?HS_AI_GHOST_SPEED}.
 
 translate_coord_to_tile({X, Y}) ->
-  TileX = erlang:round(X / 32),
-  TileY = erlang:round(Y / 32),
+  TileX = erlang:round(X / ?HS_TILE_WIDTH),
+  TileY = erlang:round(Y / ?HS_TILE_HEIGHT),
   {TileX, TileY}.
-
+%% Only allow coordinates multiple of HS_TILE_HEIGHT
+normalize_coords(Coords) ->
+	{X,Y} = translate_coord_to_tile(Coords),
+	{X * ?HS_TILE_WIDTH, Y * ?HS_TILE_HEIGHT}.
 reverse_vector(none) ->
   none;
 reverse_vector({X, Y}) ->
