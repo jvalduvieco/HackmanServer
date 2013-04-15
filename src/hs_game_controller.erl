@@ -83,7 +83,8 @@ waiting({list_players}, {_Pid, _Tag}, State ) ->
 % Async events
 waiting({new_player, ClientHandle, PlayerData}, State) ->
 	PlayerStore = State#state.player_store,
-	hs_player_store:add_player(PlayerStore, hs_client_handle:get_session(ClientHandle), PlayerData),
+	PlayerType = proplists:get_value(<<"player_type">>, PlayerData, none),
+	hs_player_store:add_player(PlayerStore, hs_client_handle:get_session(ClientHandle), PlayerType, PlayerData),
 	gen_event:notify(hs_game_event_manager, {new_player, ClientHandle, PlayerData}),
 	{next_state, waiting, State};
 waiting({start_game}, State) ->
@@ -93,6 +94,7 @@ waiting({start_game}, State) ->
 
 playing({position_update, ClientHandle, PlayerData}, State) ->
 	PlayerStore = State#state.player_store,
+	% FIXME. Maybe this is too expensive. Rework client message format
 	Position = proplists:get_value(<<"pos">>, PlayerData),
 	PositionX = proplists:get_value(<<"x">>, Position),
 	PositionY = proplists:get_value(<<"y">>, Position),

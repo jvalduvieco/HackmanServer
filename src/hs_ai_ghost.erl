@@ -53,7 +53,7 @@ init({Session, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, Game
   lager:debug("initializing ghost ai..."),
   <<A:32, B:32, C:32>> = crypto:rand_bytes(12),
   random:seed({A,B,C}),
-	hs_player_store:add_player(PlayerStore, Session, PlayerData),
+	hs_player_store:add_player(PlayerStore, Session, <<"ghostAI">>, PlayerData),
 	ok = gen_event:add_handler(hs_game_event_manager, hs_ai_ghost_events_handler, erlang:self()),
   StateInit = #state{session = Session, pos={X, Y}, map_handle = Map, map_width = MapWidth, map_height = MapHeight,
   player_data = PlayerData, player_store = PlayerStore, game_event_manager_pid = GameEventManagerPid},
@@ -109,8 +109,6 @@ pursue({timeout, _Ref, status_timeout}, State) ->
 pursue(_Event, _From, State) ->
   {reply, ok, pursue, State}.
 
-
-
 handle_event(_Event, StateName, State) ->
   {next_state, StateName, State}.
 
@@ -165,19 +163,13 @@ choose_target_quadrant(State) ->
   State#state{target_coord=TargetCoord, target_id=none}.
 
 choose_target_pacman(State) ->
-  % TODO
-%%   PacmanLists = hs_map_store:get_entities_by_type(State#state.map_handle, <<"pacman">>),
-%%   Pacman = lists:nth(random:uniform(length(PacmanLists)), PacmanLists),
-%%   [{<<"x">>, X}, {<<"y">>, Y}, {<<"id">>, Id}, {<<"type">>, _Type}] = Pacman,
-  Id = 1,
-	PlayerPosition = hs_player_store:get_player_position(State#state.player_store, Id),
-	%lager:debug("player_position: ~p",[PlayerPosition]),
-  State#state{target_coord=PlayerPosition, target_id=Id}.
+  PacmanInGame = hs_player_store:list_players_by_type(State#state.player_store, <<"pacman">>),
+	TargetPacman = lists:nth(random:uniform(length(PacmanInGame)), PacmanInGame),
+	TargetPacmanSessionId = proplists:get_value(<<"sessionId">>, TargetPacman, none),
+  TargetPacmanPosition = hs_player_store:get_player_position(State#state.player_store, TargetPacmanSessionId),
+	State#state{target_coord=TargetPacmanPosition, target_id=TargetPacmanSessionId}.
 
 recalculate_target_coord_pacman(State) ->
-  % TODO
-%%   [Pacman|_] = hs_map_store:get_entities_by_id(State#state.map_handle, State#state.target_id),
-%%   [{<<"x">>, X}, {<<"y">>, Y}, {<<"id">>, _Id}, {<<"type">>, _Type}] = Pacman,
 	PlayerPosition = hs_player_store:get_player_position(State#state.player_store, State#state.target_id),
   State#state{target_coord=PlayerPosition}.
 
