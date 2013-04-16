@@ -62,12 +62,12 @@ load_object_layer(Map, ObjectLayer, ObjectType, Id, TileWidth, TileHeight) ->
 	load_object_layer(Map, Rest, ObjectType, Id+1, TileWidth, TileHeight).
 
 load(FileName) ->
-	{ok, MapStore} = hs_map_store:init(),
 	MapData = decode(FileName),
 	MapHeight = get_map_property(MapData, <<"height">>),
 	MapWidth = get_map_property(MapData, <<"width">>),
 	TileHeight = get_map_property(MapData, <<"tileheight">>),
 	TileWidth = get_map_property(MapData, <<"tilewidth">>),
+	{ok, MapStore} = hs_map_store:init(MapWidth, MapHeight, TileHeight, TileWidth),
 	CollisionLayer = get_layer(MapData, <<"collision">>),
 	CollisionLayerData = get_layer_data(CollisionLayer),
 	load_collision_layer(MapStore, CollisionLayerData, MapWidth, MapHeight),
