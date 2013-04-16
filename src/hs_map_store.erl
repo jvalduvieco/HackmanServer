@@ -68,19 +68,22 @@ get_entities_by_type(MapHandle, Type) ->
 
 is_void(MapHandle, Coords) ->
   {ok, List} = get_entities(MapHandle, Coords),
-  Result = [1 || {_, _, IsSolid} <- List, IsSolid =/= true],
+  Result = [1 || {_, _, IsSolid} <- List, IsSolid =:= true],
+%%   lager:debug("[is_void]: (~p) List: ~p; Result: ~p", [Coords, List, Result]),
   case Result of
     [] -> false;
     _ -> true
   end.
 
-exists(MapHandle, {X, Y}) when
-	X >= 0 andalso X =< MapHandle#map_handle.max_x andalso Y >= 0 andalso Y =< MapHandle#map_handle.max_y ->
+exists(MapHandle, {X, Y}) when X >= 0 andalso X =< MapHandle#map_handle.max_x andalso Y >= 0 andalso Y =< MapHandle#map_handle.max_y ->
 	true;
 exists(_MapHandle, {_X,_Y}) ->
 	false.
 check_suitability(MapHandle, Coords) ->
-	exists(MapHandle, Coords) andalso is_void(MapHandle,Coords).
+  Exists = exists(MapHandle, Coords),
+  IsVoid = is_void(MapHandle, Coords),
+%%   lager:debug("check_suitability: (~p) ~p andalso ~p", [Coords, Exists, IsVoid]),
+  Exists andalso IsVoid.
 
 %% get a list of coords that are ok to move an entity because is not colliding with anything
 %% orthogonal
