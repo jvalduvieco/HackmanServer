@@ -7,7 +7,7 @@
 -behaviour(gen_fsm).
 
 %% Config
--define(HS_AI_GHOST_SEARCHING_TIMEOUT, 10000).
+-define(HS_AI_GHOST_STATUS_TIMEOUT, 10000).
 -define(HS_AI_GHOST_SPEED, 3).
 -define(HS_AI_GHOST_MOVE_TIME, 16).
 %%FIXME Get from map handle
@@ -67,14 +67,17 @@ init({Session, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, Game
 %% State: waiting
 %% ---------------------------------------------------
 waiting({start_game}, State) ->
-	TargetCoords = choose_target_coords(State#state.map_width, State#state.map_height),
+  lager:debug("[waiting]"),
+%%   lager:debug("pos: ~p; map_width: ~p; map_height: ~p", [State#state.pos, State#state.map_width, State#state.map_height]),
+	TargetCoords = choose_target_coords(State#state.pos, State#state.map_width, State#state.map_height),
+%%   lager:debug("TargetCoords: ~p", [TargetCoords]),
+  % make decision
+  Velocity = take_decision(State#state.map_handle, State#state.pos, State#state.velocity_vector, TargetCoords),
 	% status timer
 	StatusTimer = create_status_timer(),
 	% move timer
 	MoveTimer = create_move_timer(),
-	% make decision
-	Velocity = take_decision(State#state.map_handle, State#state.pos, State#state.velocity_vector, TargetCoords),
-	{next_state, search,
+  {next_state, search,
 		State#state{timer_ref_status = StatusTimer, timer_ref_movement = MoveTimer, velocity_vector = Velocity, target_coord = TargetCoords}}.
 %% ---------------------------------------------------
 %% State: search
@@ -82,13 +85,15 @@ waiting({start_game}, State) ->
 search({timeout, _Ref, move_timeout}, State) ->
 	% Just update our current position and schedule a new timer
 	% TODO Check for collisions
-  NewPos = move(State#state.pos, State#state.velocity_vector),
 	%lager:debug("params ~p ~p ~p ~p",[State#state.map_handle, State#state.pos, State#state.velocity_vector, State#state.target_coord]),
-	NewVel = take_decision(State#state.map_handle, State#state.pos, State#state.velocity_vector, State#state.target_coord),
+	NewTargetCoord = change_target_coord_if_reached(State#state.pos, State#state.target_coord, State#state.map_width, State#state.map_height),
+  NewVel = take_decision(State#state.map_handle, State#state.pos, State#state.velocity_vector, NewTargetCoord),
+  NewPos = move(State#state.pos, NewVel),
 	maybe_announce(State#state.velocity_vector, NewVel, NewPos, State),
   MoveTimerRef = create_move_timer(),
-  {next_state, search, State#state{pos = NewPos, timer_ref_movement = MoveTimerRef, velocity_vector = NewVel}};
+  {next_state, search, State#state{pos = NewPos, timer_ref_movement = MoveTimerRef, velocity_vector = NewVel, target_coord = NewTargetCoord}};
 search({timeout, _Ref, status_timeout}, State) ->
+  lager:debug("[search]"),
   TargetPacman = choose_target_pacman(State#state.player_store),
 	TargetCoords = hs_player_store:get_player_position(State#state.player_store, TargetPacman),
 	%lager:debug("params ~p ~p ~p ~p",[State#state.map_handle, State#state.pos, State#state.velocity_vector, TargetCoords]),
@@ -113,7 +118,8 @@ pursue({timeout, _Ref, move_timeout}, State) ->
   MoveTimerRef = create_move_timer(),
   {next_state, pursue, State#state{velocity_vector = NewVel, pos = NewPos, timer_ref_movement = MoveTimerRef}};
 pursue({timeout, _Ref, status_timeout}, State) ->
-  TargetCoords = choose_target_coords(State#state.map_width, #state.map_height),
+  lager:debug("[pursue]"),
+  TargetCoords = choose_target_coords(State#state.pos, State#state.map_width, #state.map_height),
 	Velocity = take_decision(State#state.map_handle, State#state.pos, State#state.velocity_vector, TargetCoords),
   StatusTimer = create_status_timer(),
   {next_state, search,
@@ -144,7 +150,7 @@ maybe_announce(OldVelocity, CurrentVelocity, Position, State) when OldVelocity =
 	{PosX, PosY} = normalize_coords(Position),
 	Velocity = {<<"vel">>, [{<<"x">>, VelX},{<<"y">>, VelY}]},
 	PositionFormatted = {<<"pos">>, [{<<"x">>, PosX}, {<<"y">>, PosY}]},
-	lager:debug("Announcing ~p (~p , ~p)",[PositionFormatted, OldVelocity, CurrentVelocity]),
+	%lager:debug("Announcing ~p (~p , ~p)",[PositionFormatted, OldVelocity, CurrentVelocity]),
 	gen_event:notify(State#state.game_event_manager_pid,
 		{position_update, ClientHandle, State#state.player_data ++ [Velocity, PositionFormatted]});
 maybe_announce(_OldVelocity, _CurrentVelocity, _Position, _State) ->
@@ -153,21 +159,50 @@ create_move_timer() ->
   gen_fsm:start_timer(?HS_AI_GHOST_MOVE_TIME, move_timeout).
 
 create_status_timer() ->
-  gen_fsm:start_timer(?HS_AI_GHOST_SEARCHING_TIMEOUT, status_timeout).
+  gen_fsm:start_timer(?HS_AI_GHOST_STATUS_TIMEOUT, status_timeout).
 
 move(CurrentPosition, Velocity) ->
   {VelocityVectorX, VelocityVectorY} = Velocity,
   {OriginalPosX, OriginalPosY} = CurrentPosition,
 	{OriginalPosX+VelocityVectorX, OriginalPosY+VelocityVectorY}.
 
-choose_target_coords(MapWidth, MapHeight) ->
-  % choose a quadrant
-  case random:uniform(4) of
-    1 -> {MapWidth * ?HS_TILE_WIDTH, 0};
-    2 -> {MapWidth * ?HS_TILE_WIDTH, MapHeight * ?HS_TILE_HEIGHT};
-    3 -> {0, MapHeight * ?HS_TILE_HEIGHT};
-    4 -> {0, 0}
-  end.
+%% change target coordinates if current position is in the target coordinates
+change_target_coord_if_reached(CurrentPosition, TargetCoordinates, MapWidth, MapHeight) ->
+  {TilePosX, TilePosY} = translate_coord_to_tile(CurrentPosition),
+  {TileTargetX, TileTargetY} = translate_coord_to_tile(TargetCoordinates),
+  Distance = math:sqrt(math:pow(TilePosX - TileTargetX, 2) + math:pow(TilePosY - TileTargetY, 2)),
+%%   lager:debug("Distance: ~p", [Distance]),
+  change_target_coord_if_reached(Distance, MapWidth, MapHeight, CurrentPosition, TargetCoordinates).
+change_target_coord_if_reached(Distance, MapWidth, MapHeight, CurrentPosition, _) when Distance < 3 ->
+%%   lager:debug("target coord reached"),
+%%   lager:debug("  CurrentPosition: ~p", [CurrentPosition]),
+%%   lager:debug("  MapWidth: ~p", [MapWidth]),
+%%   lager:debug("  MapHeight: ~p", [MapHeight]),
+  choose_target_coords(CurrentPosition, MapWidth, MapHeight);
+change_target_coord_if_reached(_, _, _, _, TargetCoordinates) ->
+  TargetCoordinates.
+
+%% choose a target quadrant coords that it is diffent of your current quadrant
+choose_target_coords({X, Y}, MapWidth, MapHeight) when (X >= MapWidth/2) and (Y < MapHeight/2) -> % 1st quad
+  AvailableQuads = [2, 3, 4],
+  choose_target_coords_available_quads(AvailableQuads, MapWidth, MapHeight);
+choose_target_coords({X, Y}, MapWidth, MapHeight) when (X >= MapWidth/2) and (Y >= MapHeight/2) -> % 2nd quad
+  AvailableQuads = [1, 3, 4],
+  choose_target_coords_available_quads(AvailableQuads, MapWidth, MapHeight);
+choose_target_coords({X, Y}, MapWidth, MapHeight) when (X < MapWidth/2) and (Y >= MapHeight/2) -> % 3th quad
+  AvailableQuads = [1, 2, 4],
+  choose_target_coords_available_quads(AvailableQuads, MapWidth, MapHeight);
+choose_target_coords({X, Y}, MapWidth, MapHeight) when (X < MapWidth/2) and (Y < MapHeight/2) -> % 4th quad
+  AvailableQuads = [1, 2, 3],
+  choose_target_coords_available_quads(AvailableQuads, MapWidth, MapHeight).
+choose_target_coords_available_quads(AvailableQuads, MapWidth, MapHeight) ->
+  ChooseQuad = lists:nth(random:uniform(3), AvailableQuads),
+  Quads = [ {MapWidth * ?HS_TILE_WIDTH, 0}, % 1st quad
+            {MapWidth * ?HS_TILE_WIDTH, MapHeight * ?HS_TILE_HEIGHT}, % 2nd quad
+            {0, MapHeight * ?HS_TILE_HEIGHT}, % 3th quad
+            {0, 0}], % 4th quad
+%%   lager:debug("AvailableQuads: ~p; ChooseQuad: ~p", [AvailableQuads, ChooseQuad]),
+  lists:nth(ChooseQuad, Quads).
 
 choose_target_pacman(PlayerStore) ->
 	% FIXME Handle when no pacmans are in match
@@ -182,11 +217,17 @@ take_decision(MapHandle, CurrentPosition, CurrentVelocity, TargetCoordinates) ->
 	TilePos = translate_coord_to_tile(CurrentPosition),
   {ok, ListTilePositions} = hs_map_store:free_move_positions(MapHandle, TilePos),
 	TargetTile = translate_coord_to_tile(TargetCoordinates),
-  choose_velocity_vector(TilePos, ListTilePositions, TargetTile, CurrentVelocity).
+  Result = choose_velocity_vector(TilePos, ListTilePositions, TargetTile, CurrentVelocity),
+%%   lager:debug("  TilePos: ~p (~p);  TargetTile: ~p;  Velocity: ~p;  ListTilePositions: ~p", [TilePos, CurrentPosition, TargetTile, Result, ListTilePositions]),
+%%   lager:debug("  ListTilePositions: ~p", [ListTilePositions]),
+%%   lager:debug("  TilePos:    ~p (~p)", [TilePos, CurrentPosition]),
+%%   lager:debug("  TargetTile: ~p", [TargetTile]),
+%%   lager:debug("  Velocity:   ~p", [Result]),
+  Result.
 
-choose_velocity_vector(_, [CoordPosition|[]], _, _) ->
+choose_velocity_vector(TilePos, [CoordPosition|[]], _, _) ->
   % one option only
-  CoordPosition;
+  calculate_velocity_vector(CoordPosition, TilePos);
 choose_velocity_vector(TilePos, ListTilePositions, TileTarget, CurrentVelocityVector) ->
   ListTilePositionsDistance = [{distance(CoordPos, TileTarget), calculate_velocity_vector(CoordPos, TilePos)} || CoordPos <- ListTilePositions],
   ListTilePositionsDistanceSort = lists:sort(fun({DistA, _}, {DistB, _}) -> if(DistA=<DistB) -> true; true -> false end end, ListTilePositionsDistance),
