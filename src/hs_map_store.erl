@@ -71,34 +71,35 @@ is_void(MapHandle, Coords) ->
   Result = [1 || {_, _, IsSolid} <- List, IsSolid =:= true],
 %%   lager:debug("[is_void]: (~p) List: ~p; Result: ~p", [Coords, List, Result]),
   case Result of
-    [] -> false;
-    _ -> true
+    [] -> true;
+    _ -> false
   end.
 
-exists(MapHandle, {X, Y}) when X >= 0 andalso X =< MapHandle#map_handle.max_x andalso Y >= 0 andalso Y =< MapHandle#map_handle.max_y ->
-	true;
+exists(MapHandle, {X, Y}) when X >= 0 andalso X < MapHandle#map_handle.max_x andalso Y >= 0 andalso Y < MapHandle#map_handle.max_y ->
+%% 	lager:debug("[exists]: true ~p", [{X, Y}]),
+  true;
 exists(_MapHandle, {_X,_Y}) ->
+%%   lager:debug("[exists]: false ~p", [{X, Y}]),
 	false.
 check_suitability(MapHandle, Coords) ->
-  Exists = exists(MapHandle, Coords),
-  IsVoid = is_void(MapHandle, Coords),
+%%   Exists = exists(MapHandle, Coords),
+%%   IsVoid = is_void(MapHandle, Coords),
 %%   lager:debug("check_suitability: (~p) ~p andalso ~p", [Coords, Exists, IsVoid]),
-  Exists andalso IsVoid.
+%%   Exists andalso IsVoid.
+  exists(MapHandle, Coords) andalso is_void(MapHandle, Coords).
 
 %% get a list of coords that are ok to move an entity because is not colliding with anything
 %% orthogonal
 free_move_positions(MapHandle, {X, Y}) ->
   List = [
   {{X,   Y-1}, check_suitability(MapHandle, {X,   Y-1})},
-%%   {{X+1, Y-1}, is_solid(MapHandle, {X+1, Y-1})},
   {{X+1, Y},   check_suitability(MapHandle, {X+1, Y})},
-%%   {{X+1, Y+1}, is_solid(MapHandle, {X+1, Y+1})},
   {{X,   Y+1}, check_suitability(MapHandle, {X,   Y+1})},
-%%   {{X-1, Y+1}, is_solid(MapHandle, {X-1, Y+1})},
   {{X-1, Y},   check_suitability(MapHandle, {X-1, Y})}
-%%   {{X-1, Y-1}, is_solid(MapHandle, {X-1, Y-1})}
   ],
-  Result = [Coords || {Coords, IsSuitable} <- List, IsSuitable =:= false],
+  Result = [Coords || {Coords, IsSuitable} <- List, IsSuitable =:= true],
+%%   lager:debug("[free_move_positions]: ~p => ~p", [List, Result]),
+  % List = [{{0,10},true},{{1,11},false},{{0,12},true},{{-1,11},false}]. => [{1,11},{-1,11}]
   {ok, Result}.
 
 namespace(Id) ->
