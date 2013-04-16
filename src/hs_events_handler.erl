@@ -44,7 +44,7 @@ handle_event({new_player,ClientHandle, PlayerData}, State) ->
 			ok;
 		_OtherSessionId ->
 			State#state.websocket_pid ! {reply,
-				[{<<"type">>, <<"newPlayerAnnounce">>}, {<<"data">>, [{<<"sessionId">>, Session}, PlayerData]}]}
+				[{<<"type">>, <<"newPlayerAnnounce">>}, {<<"data">>, PlayerData}]}
 	end,
 	{ok, State};
 handle_event({start_game}, State) ->

@@ -13,7 +13,7 @@
 
 init(Args) ->
 	lager:info("Rules enforcement registered ~p ", [Args]),
-	Map = hs_file_map_loader:load(hs_config:get(map_file)),
+	{ok, Map} = hs_file_map_loader:load(hs_config:get(map_file)),
 	{ok, #state{map=Map}}.
 
 handle_event({pick_object, ClientHandle, Data}, State) ->

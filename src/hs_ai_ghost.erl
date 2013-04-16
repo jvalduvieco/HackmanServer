@@ -57,7 +57,7 @@ init({Session, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, Game
   <<A:32, B:32, C:32>> = crypto:rand_bytes(12),
   random:seed({A,B,C}),
 	hs_player_store:add_player(PlayerStore, Session, <<"ghostAI">>, PlayerData),
-	ok = gen_event:add_handler(hs_game_event_manager, hs_ai_ghost_events_handler, erlang:self()),
+	ok = gen_event:add_handler(GameEventManagerPid, hs_ai_ghost_events_handler, erlang:self()),
   {ok, waiting,
 	  #state{session = Session, pos={X, Y}, map_handle = Map, map_width = MapWidth, map_height = MapHeight,
   player_data = PlayerData, player_store = PlayerStore, game_event_manager_pid = GameEventManagerPid}}.

@@ -16,9 +16,15 @@ start_link() ->
 
 %% supervisor callbacks
 init([]) ->
-	GameControllerChildSpec = {{local, hs_game_controller},
-		{hs_game_controller, start_link, []},
-		permanent, infinity, worker, [hs_game_controller]},
+%% 	GameControllerChildSpec = {{local, hs_match_referee},
+%% 		{hs_match_referee, start_link, []},
+%% 		permanent, infinity, worker, [hs_match_referee]},
+	AccountServiceChildSpec = {{local, hs_account_service},
+		{hs_account_service, start_link, []},
+		permanent, infinity, worker, [hs_account_service]},
+	MatchManagerServiceChildSpec = {{local, hs_match_manager_service},
+		{hs_match_manager_service, start_link, []},
+		permanent, infinity, worker, [hs_match_manager_service]},
 	{ok, {{one_for_one, 5, 10}, [
-		GameControllerChildSpec
+		AccountServiceChildSpec, MatchManagerServiceChildSpec
 	]}}.

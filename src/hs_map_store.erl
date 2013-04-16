@@ -3,7 +3,7 @@
 -author("jordillonch").
 
 %% API
--export([init/4, add_entity/5, set/3, set_properties/5, delete_entity_check_type/3, get_entities/2,
+-export([init/4, add_entity/5, set_properties/5, delete_entity_check_type/3, get_entities/2,
 	get_entities_by_type/2, is_void/2, exists/2, free_move_positions/2]).
 
 %% TODO: Refactor this into a service
@@ -23,18 +23,9 @@ init(MaxX, MaxY, TileHeight, TileWidth) ->
   ets:new(TableName,[bag, public, named_table, {write_concurrency, true}, {read_concurrency, true}]),
   {ok, #map_handle{table_name = TableName, max_x = MaxX, max_y = MaxY, tile_height = TileHeight, tile_width = TileWidth}}.
 
-%% TODO: Add map properties as a proplist into the handle
-set(MapHandle, max_x, Value) ->
-	MapHandle#map_handle{max_x = Value};
-set(MapHandle, max_y, Value) ->
-	MapHandle#map_handle{max_y = Value};
-set(MapHandle, tile_height, Value) ->
-	MapHandle#map_handle{tile_height = Value};
-set(MapHandle, tile_width, Value) ->
-	MapHandle#map_handle{tile_width = Value}.
-
 set_properties (MapHandle, MaxX, MaxY, TileHeight, TileWidth) ->
 	MapHandle#map_handle{max_x = MaxX, max_y = MaxY, tile_height = TileHeight, tile_width = TileWidth}.
+
 %% add an entity to the map
 %% if you want to creat walls you can add an empty entity that is collidable
 add_entity(MapHandle, Id, Entity, {X, Y}, IsSolid) ->

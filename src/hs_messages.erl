@@ -4,24 +4,39 @@
 
 %% API
 -export([handle/4]).
+-record(state, {
+	match_referee_pid = none
+}).
 
 handle(<<"login">>, _From, _Message, State) ->
-	{session_id, SessionId} = hs_game_controller:login(),
+	{ok, SessionId, _UserId} = hs_account_service:login(),
 	{reply, [{<<"StatusCode">>, 200},
 		{<<"type">>,<<"loginResponse">>},
-		{<<"sessionId">>, SessionId}], State};
+		{<<"sessionId">>, SessionId}], #state{}};
+handle(<<"joinMatch">>, From, Message, State) ->
+	MatchId = proplists:get_value(<<"matchId">>, Message, none),
+	{ok, MatchRefereePid} = hs_match_manager_service:get_match_handle(MatchId),
+	hs_match_referee:join(MatchRefereePid, hs_client_handle:get_session(From)),
+	{reply, [{<<"StatusCode">>, 200},
+		{<<"type">>, <<"joinMatchResponse">>}], State#state{match_referee_pid=MatchRefereePid}};
+handle(<<"newMatch">>, From, Message, State) ->
+	GameId = proplists:get_value(<<"gameId">>, Message, none),
+	{ok, MatchId, MatchRefereePid} = hs_match_manager_service:new_match(GameId),
+	hs_match_referee:join(MatchRefereePid, hs_client_handle:get_session(From)),
+	{reply, [{<<"StatusCode">>, 200},
+		{<<"type">>, <<"newMatchResponse">>}, {<<"matchId">>, MatchId}], State#state{match_referee_pid = MatchRefereePid}};
 handle(<<"newPlayer">>, From, Message, State) ->
-	hs_game_controller:new_player(From, Message),
+	hs_match_referee:new_player(State#state.match_referee_pid, From, Message),
 	{reply, [{<<"statusCode">>, 200},
 		{<<"type">>,<<"newPlayerResponse">>}], State};
 handle(<<"getPlayers">>, _From, _Message, State) ->
-	List = hs_game_controller:list_players(),
+	List = hs_match_referee:list_players(State#state.match_referee_pid),
 	{reply, [{<<"statusCode">>, 200},
 		{<<"type">>,<<"getPlayersResponse">>},
 		{<<"data">>,List}],
 		State};
 handle(<<"getObjects">>, _From, _Message, State) ->
-	List = hs_game_controller:get_objects(),
+	List = hs_match_referee:get_objects(State#state.match_referee_pid),
 	{reply, [{<<"statusCode">>, 200},
 		{<<"type">>,<<"getObjectsResponse">>},
 		{<<"data">>, List}],
@@ -31,10 +46,10 @@ handle(<<"ping">>, _From, Message, State) ->
 		{<<"type">>,<<"pong">>}, {<<"data">>, Message}],
 		State};
 handle(<<"positionUpdate">>, Session, Message, State)->
-	ok = hs_game_controller:position_update(Session, Message),
+	ok = hs_match_referee:position_update(State#state.match_referee_pid, Session, Message),
 	{noreply, none, State};
 handle(<<"pickObject">>, From, Message, State)->
-	ok = hs_game_controller:pick_object(From, Message),
+	ok = hs_match_referee:pick_object(State#state.match_referee_pid,From, Message),
 	{noreply, none, State};
 handle( none, From, Message, State) ->
 	{reply, [{<<"statusCode">>, 400},

@@ -77,4 +77,4 @@ load(FileName) ->
 	MagicDotLayer = get_layer(MapData,<<"magicdots">>),
 	MagicDotLayerData = get_layer_objects(MagicDotLayer),
 	load_object_layer(MapStore, MagicDotLayerData, <<"magicdots">>, 0, TileWidth, TileHeight),
-	MapStore.
+	{ok, MapStore}.
