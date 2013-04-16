@@ -170,9 +170,10 @@ choose_target_coords(MapWidth, MapHeight) ->
   end.
 
 choose_target_pacman(PlayerStore) ->
-  PacmanInGame = hs_player_store:list_players_by_type(PlayerStore, <<"pacman">>),
-	TargetPacman = lists:nth(random:uniform(length(PacmanInGame)), PacmanInGame),
-	proplists:get_value(<<"sessionId">>, TargetPacman, none).
+	% FIXME Handle when no pacmans are in match
+  PacmanInGame = hs_player_store:list_players_by_type(PlayerStore, <<"player">>),
+	lager:debug("Pacmans in game: ~p", [PacmanInGame]),
+	lists:nth(random:uniform(length(PacmanInGame)), PacmanInGame).
 
 recalculate_target_pacman_coord(PlayerStore, TargetID) ->
 	hs_player_store:get_player_position(PlayerStore, TargetID).

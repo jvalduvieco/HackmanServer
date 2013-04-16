@@ -31,7 +31,7 @@ list_players(PlayerStoreHandle) ->
 list_players_by_type(PlayerStoreHandle, PlayerType) ->
 	% FIXME Maybe, create an index table to search by PlayerType
 	TableName = get_table_name(PlayerStoreHandle),
-	ets:select(TableName, [{{'$1', '$2', PlayerType, '$3'}, [], ['$3']}]).
+	ets:select(TableName, [{{'$1', '$2', PlayerType, '$3'}, [], ['$1']}]).
 
 namespace(Id) ->
 	list_to_atom("hs_players_store_" ++ erlang:ref_to_list(Id)).
