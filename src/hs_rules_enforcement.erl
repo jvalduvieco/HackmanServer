@@ -26,7 +26,7 @@ handle_event({pick_object, ClientHandle, Data}, State) ->
 	maybe_give_points(ObjectType, hs_map_store:delete_entity_check_type(State#state.map, ObjectId, ObjectType), ClientHandle),
 	{ok, State};
 handle_event({ghost_ai_position_update, GhostAiPid, TilePos}, State) ->
-  lager:debug("hs_rules_enforcement: ai_ghost_position_update"),
+%%   lager:debug("hs_rules_enforcement: ai_ghost_position_update"),
   ghost_ai_check_killed(GhostAiPid, TilePos, State#state.player_store),
   {ok, State};
 

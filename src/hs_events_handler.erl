@@ -50,7 +50,7 @@ handle_event({start_match}, State) ->
 	State#state.websocket_pid ! {reply, [{<<"type">>, <<"startMatch">>}]},
 	{ok, State};
 handle_event(_Event, State) ->
-	lager:debug("hs_events_handler: handle_event.."),
+%% 	lager:debug("hs_events_handler: handle_event.."),
 	{ok, State}.
 
 handle_call(_Request, State) ->
