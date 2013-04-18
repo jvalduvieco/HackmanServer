@@ -32,7 +32,6 @@ handle_event({pick_object, ClientHandle, Data}, State) ->
 		MySession ->
 			ok;
 		_OtherSessionId ->
-			%TODO: Check wether it is better to use | or ++ for list concatenation
 			State#state.websocket_pid ! {reply, [{<<"type">>, <<"pickObjectAnnounce">>}, {<<"data">>,  Data}]}
 	end,
 	{ok, State};
@@ -47,8 +46,8 @@ handle_event({new_player,ClientHandle, PlayerData}, State) ->
 				[{<<"type">>, <<"newPlayerAnnounce">>}, {<<"data">>, PlayerData}]}
 	end,
 	{ok, State};
-handle_event({start_game}, State) ->
-	State#state.websocket_pid ! {reply, [{<<"type">>, <<"startGame">>}]},
+handle_event({start_match}, State) ->
+	State#state.websocket_pid ! {reply, [{<<"type">>, <<"startMatch">>}]},
 	{ok, State};
 handle_event(_Event, State) ->
 	lager:debug("hs_events_handler: handle_event.."),

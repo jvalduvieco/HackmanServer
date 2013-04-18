@@ -4,7 +4,7 @@
 
 %% API
 -export([start_link/0]).
--export([join/2, start_game/1, new_player/3, get_objects/1, position_update/3, pick_object/3, list_players/1]).
+-export([join/2, start_match/1, new_player/3, get_objects/1, position_update/3, pick_object/3, list_players/1]).
 -export([init/1, code_change/4, handle_info/3, handle_sync_event/4, handle_event/3, terminate/3]).
 -export([waiting/2, waiting/3, playing/2, finished/2]).
 
@@ -20,8 +20,8 @@ start_link() ->
 join(MatchHandle, SessionId) ->
 	gen_fsm:sync_send_event(MatchHandle, {join, SessionId}).
 
-start_game(MatchHandle) ->
-	gen_fsm:send_event(MatchHandle, {start_game}).
+start_match(MatchHandle) ->
+	gen_fsm:send_event(MatchHandle, {start_match}).
 
 new_player(MatchHandle, Session, PlayerData) ->
 	gen_fsm:send_event(MatchHandle, {new_player, Session, PlayerData}).
@@ -95,9 +95,9 @@ waiting({new_player, ClientHandle, PlayerData}, State) ->
 	hs_player_store:add_player(PlayerStore, hs_client_handle:get_session(ClientHandle), PlayerType, PlayerData),
 	gen_event:notify(State#state.match_hub_pid, {new_player, ClientHandle, PlayerData}),
 	{next_state, waiting, State};
-waiting({start_game}, State) ->
+waiting({start_match}, State) ->
 	lager:debug("Starting game..."),
-	gen_event:notify(State#state.match_hub_pid, {start_game}),
+	gen_event:notify(State#state.match_hub_pid, {start_match}),
 	{next_state, playing, State}.
 
 playing({position_update, ClientHandle, PlayerData}, State) ->
@@ -112,7 +112,7 @@ playing({position_update, ClientHandle, PlayerData}, State) ->
 playing({pick_object, ClientHandle, Data}, State) ->
 	gen_event:notify(State#state.match_hub_pid, {pick_object, ClientHandle, Data}),
 	{next_state, playing, State};
-playing({end_game, _Data}, State) ->
+playing({end_match, _Data}, State) ->
 	{next_state, finished, State};
 playing(_Message, State) ->
 	{next_state, playing, State}.

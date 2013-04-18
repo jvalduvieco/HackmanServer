@@ -12,7 +12,7 @@ handle(<<"login">>, _From, _Message, State) ->
 	{ok, SessionId, _UserId} = hs_account_service:login(),
 	{reply, [{<<"StatusCode">>, 200},
 		{<<"type">>,<<"loginResponse">>},
-		{<<"sessionId">>, SessionId}], #state{}};
+		{<<"data">>,[{<<"sessionId">>, SessionId}]}], #state{}};
 handle(<<"joinMatch">>, From, Message, State) ->
 	MatchId = proplists:get_value(<<"matchId">>, Message, none),
 	{ok, MatchRefereePid} = hs_match_manager_service:get_match_handle(MatchId),
@@ -24,7 +24,7 @@ handle(<<"newMatch">>, From, Message, State) ->
 	{ok, MatchId, MatchRefereePid} = hs_match_manager_service:new_match(GameId),
 	hs_match_referee:join(MatchRefereePid, hs_client_handle:get_session(From)),
 	{reply, [{<<"StatusCode">>, 200},
-		{<<"type">>, <<"newMatchResponse">>}, {<<"matchId">>, MatchId}], State#state{match_referee_pid = MatchRefereePid}};
+		{<<"type">>, <<"newMatchResponse">>}, {<<"data">>, [{<<"matchId">>, MatchId}]}], State#state{match_referee_pid = MatchRefereePid}};
 handle(<<"newPlayer">>, From, Message, State) ->
 	hs_match_referee:new_player(State#state.match_referee_pid, From, Message),
 	{reply, [{<<"statusCode">>, 200},

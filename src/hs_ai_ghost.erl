@@ -20,7 +20,7 @@
 -export([waiting/2, search/2, search/3, pursue/2, pursue/3]).
 %% Public API
 -export([start_link/1]).
--export([start_game/1, killed/1, end_game/1]).
+-export([start_match/1, killed/1, end_match/1]).
 
 %% State
 -record(state, {
@@ -44,10 +44,10 @@ start_link({Id, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, Gam
 	gen_fsm:start_link(?MODULE, {Id, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, GameEventManagerPid}, []).
 
 %% Public API
-start_game(GhostAIPid) ->
-	gen_fsm:send_event(GhostAIPid, {start_game}).
-end_game(GhostAIPid) ->
-	gen_fsm:send_event(GhostAIPid, {end_game}).
+start_match(GhostAIPid) ->
+	gen_fsm:send_event(GhostAIPid, {start_match}).
+end_match(GhostAIPid) ->
+	gen_fsm:send_event(GhostAIPid, {end_match}).
 killed(GhostAIPid) ->
 	gen_fsm:send_event(GhostAIPid, {killed}).
 
@@ -66,7 +66,7 @@ init({Session, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, Game
 %% ---------------------------------------------------
 %% State: waiting
 %% ---------------------------------------------------
-waiting({start_game}, State) ->
+waiting({start_match}, State) ->
   lager:debug("[waiting]"),
 %%   lager:debug("pos: ~p; map_width: ~p; map_height: ~p", [State#state.pos, State#state.map_width, State#state.map_height]),
 	TargetCoords = choose_target_coords(State#state.pos, State#state.map_width, State#state.map_height),
@@ -86,7 +86,7 @@ search({timeout, _Ref, move_timeout}, State) ->
 	% Just update our current position and schedule a new timer
 	% TODO Check for collisions
 	%lager:debug("params ~p ~p ~p ~p",[State#state.map_handle, State#state.pos, State#state.velocity_vector, State#state.target_coord]),
-	NewTargetCoord = change_target_coord_if_reached(State#state.pos, State#state.target_coord, State#state.map_width, State#state.map_height),
+	NewTargetCoord = maybe_change_target_coord(State#state.pos, State#state.target_coord, State#state.map_width, State#state.map_height),
   NewVel = take_decision(State#state.map_handle, State#state.pos, State#state.velocity_vector, NewTargetCoord),
   NewPos = move(State#state.pos, NewVel),
 	maybe_announce(State#state.velocity_vector, NewVel, NewPos, State),
@@ -167,19 +167,19 @@ move(CurrentPosition, Velocity) ->
 	{OriginalPosX+VelocityVectorX, OriginalPosY+VelocityVectorY}.
 
 %% change target coordinates if current position is in the target coordinates
-change_target_coord_if_reached(CurrentPosition, TargetCoordinates, MapWidth, MapHeight) ->
+maybe_change_target_coord(CurrentPosition, TargetCoordinates, MapWidth, MapHeight) ->
   {TilePosX, TilePosY} = translate_coord_to_tile(CurrentPosition),
   {TileTargetX, TileTargetY} = translate_coord_to_tile(TargetCoordinates),
   Distance = math:sqrt(math:pow(TilePosX - TileTargetX, 2) + math:pow(TilePosY - TileTargetY, 2)),
 %%   lager:debug("Distance: ~p", [Distance]),
-  change_target_coord_if_reached(Distance, MapWidth, MapHeight, CurrentPosition, TargetCoordinates).
-change_target_coord_if_reached(Distance, MapWidth, MapHeight, CurrentPosition, _) when Distance < 3 ->
+  maybe_change_target_coord(Distance, MapWidth, MapHeight, CurrentPosition, TargetCoordinates).
+maybe_change_target_coord(Distance, MapWidth, MapHeight, CurrentPosition, _) when Distance < 3 ->
 %%   lager:debug("target coord reached"),
 %%   lager:debug("  CurrentPosition: ~p", [CurrentPosition]),
 %%   lager:debug("  MapWidth: ~p", [MapWidth]),
 %%   lager:debug("  MapHeight: ~p", [MapHeight]),
   choose_target_coords(CurrentPosition, MapWidth, MapHeight);
-change_target_coord_if_reached(_, _, _, _, TargetCoordinates) ->
+maybe_change_target_coord(_, _, _, _, TargetCoordinates) ->
   TargetCoordinates.
 
 %% choose a target quadrant coords that it is diffent of your current quadrant

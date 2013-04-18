@@ -14,8 +14,8 @@
 init(AiPid) ->
 	{ok, #state{ai_pid = AiPid}}.
 
-handle_event({start_game}, State) ->
-	hs_ai_ghost:start_game(State#state.ai_pid),
+handle_event({start_match}, State) ->
+	hs_ai_ghost:start_match(State#state.ai_pid),
 	{ok, State};
 handle_event(_Event, State) ->
 	{ok, State}.
