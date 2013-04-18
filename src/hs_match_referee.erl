@@ -45,7 +45,7 @@ init([]) ->
 	{ok, PlayerStore} = hs_player_store:init(),
 	{ok, MatchHubPid} = gen_event:start_link(),
 	% FIXME: Add a supervised event handler
-	ok = gen_event:add_handler(MatchHubPid, hs_rules_enforcement, []),
+	ok = gen_event:add_handler(MatchHubPid, hs_rules_enforcement, {PlayerStore}),
 	% Add AI's
 	create_ai( MapStore, PlayerStore, MatchHubPid),
 	{ok, waiting,
