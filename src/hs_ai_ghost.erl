@@ -218,7 +218,7 @@ take_decision(MapHandle, CurrentPosition, CurrentVelocity, TargetCoordinates) ->
   {ok, ListTilePositions} = hs_map_store:free_move_positions(MapHandle, TilePos),
 	TargetTile = translate_coord_to_tile(TargetCoordinates),
   Result = choose_velocity_vector(TilePos, ListTilePositions, TargetTile, CurrentVelocity),
-%%   lager:debug("  TilePos: ~p (~p);  TargetTile: ~p;  Velocity: ~p;  ListTilePositions: ~p", [TilePos, CurrentPosition, TargetTile, Result, ListTilePositions]),
+  lager:debug("  TilePos: ~p (~p);  TargetTile: ~p;  Velocity: ~p;  ListTilePositions: ~p", [TilePos, CurrentPosition, TargetTile, Result, ListTilePositions]),
 %%   lager:debug("  ListTilePositions: ~p", [ListTilePositions]),
 %%   lager:debug("  TilePos:    ~p (~p)", [TilePos, CurrentPosition]),
 %%   lager:debug("  TargetTile: ~p", [TargetTile]),
