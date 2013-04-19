@@ -17,6 +17,9 @@ init(AiPid) ->
 handle_event({start_match}, State) ->
 	hs_ai_ghost:start_match(State#state.ai_pid),
 	{ok, State};
+handle_event({end_match}, State) ->
+	hs_ai_ghost:end_match(State#state.ai_pid),
+	{ok, State};
 handle_event(_Event, State) ->
 	{ok, State}.
 

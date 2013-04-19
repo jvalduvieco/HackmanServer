@@ -12,7 +12,9 @@
 
 -export([new_match/1, get_match_handle/1]).
 
--record(state, {match_id = 0}).
+-record(state, {match_id = 0,
+	game_setup = none
+}).
 
 %% gen_server callbacks
 %% API
@@ -27,11 +29,13 @@ get_match_handle(MatchId) ->
 
 
 init(_Args) ->
+	State = #state{game_setup = hs_config:get(game_setup)},
 	ets:new(?TABLE_NAME,[set, public, named_table, {write_concurrency, true}, {read_concurrency, true}]),
-	{ok, #state{}}.
+	{ok, State}.
 
 handle_call({new_match, GameId}, _From, State) ->
-	{ok, MatchRefereePid} = hs_match_referee:start_link(),
+	GameSetup = proplists:get_value(GameId, State#state.game_setup),
+	{ok, MatchRefereePid} = hs_match_referee:start_link(GameSetup),
 	ets:insert(?TABLE_NAME,{State#state.match_id, GameId, MatchRefereePid}),
 	{reply, {ok, State#state.match_id, MatchRefereePid}, State#state{match_id = State#state.match_id + 1 }};
 handle_call({get_match_handle, BinMatchId}, _From, State)->

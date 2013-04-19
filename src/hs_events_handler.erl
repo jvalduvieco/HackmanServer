@@ -49,6 +49,9 @@ handle_event({new_player,ClientHandle, PlayerData}, State) ->
 handle_event({start_match}, State) ->
 	State#state.websocket_pid ! {reply, [{<<"type">>, <<"startMatch">>}]},
 	{ok, State};
+handle_event({end_match}, State) ->
+	State#state.websocket_pid ! {reply, [{<<"type">>, <<"endMatch">>}]},
+	{ok, State};
 handle_event(_Event, State) ->
 	lager:debug("hs_events_handler: handle_event.."),
 	{ok, State}.

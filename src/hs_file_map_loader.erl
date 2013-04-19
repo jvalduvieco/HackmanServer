@@ -15,6 +15,7 @@
 %-export([load_collision_layer/4, load_object_layer/6]).
 
 decode(MapFileName) ->
+	lager:debug("FILE ~p",[MapFileName]),
 	{ok, JSONText} = file:read_file(MapFileName),
 	jsx:decode(JSONText).
 

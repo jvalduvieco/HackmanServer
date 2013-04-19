@@ -17,7 +17,7 @@
 %% gen_fsm callbacks
 -export([init/1, handle_event/3, handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
 %% States
--export([waiting/2, search/2, search/3, pursue/2, pursue/3]).
+-export([waiting/2, search/2, search/3, pursue/2]).
 %% Public API
 -export([start_link/1]).
 -export([start_match/1, killed/1, end_match/1]).
@@ -47,13 +47,13 @@ start_link({Id, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, Gam
 start_match(GhostAIPid) ->
 	gen_fsm:send_event(GhostAIPid, {start_match}).
 end_match(GhostAIPid) ->
-	gen_fsm:send_event(GhostAIPid, {end_match}).
+	gen_fsm:send_all_state_event(GhostAIPid, {end_match}).
 killed(GhostAIPid) ->
 	gen_fsm:send_event(GhostAIPid, {killed}).
 
 %% Callbacks
 init({Session, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, GameEventManagerPid}) ->
-  lager:debug("initializing ghost ai..."),
+  lager:debug("initializing ghost ai... ~p", [Session]),
   <<A:32, B:32, C:32>> = crypto:rand_bytes(12),
   random:seed({A,B,C}),
 	hs_player_store:add_player(PlayerStore, Session, <<"ghostAI">>, PlayerData),
@@ -67,7 +67,6 @@ init({Session, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, Game
 %% State: waiting
 %% ---------------------------------------------------
 waiting({start_match}, State) ->
-  lager:debug("[waiting]"),
 %%   lager:debug("pos: ~p; map_width: ~p; map_height: ~p", [State#state.pos, State#state.map_width, State#state.map_height]),
 	TargetCoords = choose_target_coords(State#state.pos, State#state.map_width, State#state.map_height),
 %%   lager:debug("TargetCoords: ~p", [TargetCoords]),
@@ -93,7 +92,6 @@ search({timeout, _Ref, move_timeout}, State) ->
   MoveTimerRef = create_move_timer(),
   {next_state, search, State#state{pos = NewPos, timer_ref_movement = MoveTimerRef, velocity_vector = NewVel, target_coord = NewTargetCoord}};
 search({timeout, _Ref, status_timeout}, State) ->
-  lager:debug("[search]"),
   TargetPacman = choose_target_pacman(State#state.player_store),
 	TargetCoords = hs_player_store:get_player_position(State#state.player_store, TargetPacman),
 	%lager:debug("params ~p ~p ~p ~p",[State#state.map_handle, State#state.pos, State#state.velocity_vector, TargetCoords]),
@@ -118,18 +116,18 @@ pursue({timeout, _Ref, move_timeout}, State) ->
   MoveTimerRef = create_move_timer(),
   {next_state, pursue, State#state{velocity_vector = NewVel, pos = NewPos, timer_ref_movement = MoveTimerRef}};
 pursue({timeout, _Ref, status_timeout}, State) ->
-  lager:debug("[pursue]"),
   TargetCoords = choose_target_coords(State#state.pos, State#state.map_width, #state.map_height),
 	Velocity = take_decision(State#state.map_handle, State#state.pos, State#state.velocity_vector, TargetCoords),
-  StatusTimer = create_status_timer(),
+  StatusTimerRef = create_status_timer(),
   {next_state, search,
-	  State#state{ target_id=none, target_coord = TargetCoords, velocity_vector = Velocity, timer_ref_status = StatusTimer}}.
+	  State#state{ target_id=none, target_coord = TargetCoords, velocity_vector = Velocity, timer_ref_status = StatusTimerRef}}.
 
-pursue(_Event, _From, State) ->
-  {reply, ok, pursue, State}.
-
-handle_event(_Event, StateName, State) ->
-  {next_state, StateName, State}.
+handle_event({end_match}, _StateName, State) ->
+	MoveTimerRef = State#state.timer_ref_movement ,
+	StatusTimerRef = State#state.timer_ref_status ,
+	gen_fsm:cancel_timer(MoveTimerRef),
+	gen_fsm:cancel_timer(StatusTimerRef),
+  {next_state, waiting, State#state{timer_ref_movement = none, timer_ref_status = none}}.
 
 handle_sync_event(_Event, _From, StateName, State) ->
   {reply, ok, StateName, State}.
@@ -218,7 +216,7 @@ take_decision(MapHandle, CurrentPosition, CurrentVelocity, TargetCoordinates) ->
   {ok, ListTilePositions} = hs_map_store:free_move_positions(MapHandle, TilePos),
 	TargetTile = translate_coord_to_tile(TargetCoordinates),
   Result = choose_velocity_vector(TilePos, ListTilePositions, TargetTile, CurrentVelocity),
-  lager:debug("  TilePos: ~p (~p);  TargetTile: ~p;  Velocity: ~p;  ListTilePositions: ~p", [TilePos, CurrentPosition, TargetTile, Result, ListTilePositions]),
+%%  lager:debug("  TilePos: ~p (~p);  TargetTile: ~p;  Velocity: ~p;  ListTilePositions: ~p", [TilePos, CurrentPosition, TargetTile, Result, ListTilePositions]),
 %%   lager:debug("  ListTilePositions: ~p", [ListTilePositions]),
 %%   lager:debug("  TilePos:    ~p (~p)", [TilePos, CurrentPosition]),
 %%   lager:debug("  TargetTile: ~p", [TargetTile]),
