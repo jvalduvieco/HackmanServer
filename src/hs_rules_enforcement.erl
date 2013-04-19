@@ -13,12 +13,15 @@
 -define(HS_TILE_WIDTH, 32).
 
 %% gen_event callbacks
--record(state, {map, player_store}).
+-record(state, {map = none,
+	player_store = none,
+	game_setup = none
+}).
 
-init({PlayerStore}) ->
+init({MatchParams, PlayerStore}) ->
 	lager:info("Rules enforcement registered ~p ", [PlayerStore]),
-	{ok, Map} = hs_file_map_loader:load(hs_config:get(map_file)),
-	{ok, #state{map = Map, player_store = PlayerStore}}.
+	{ok, Map} = hs_file_map_loader:load(proplists:get_value(map_file, MatchParams, none)),
+	{ok, #state{map = Map, player_store = PlayerStore, game_setup = MatchParams}}.
 
 handle_event({pick_object, ClientHandle, Data}, State) ->
 	ObjectId = proplists:get_value(<<"objectId">>, Data),

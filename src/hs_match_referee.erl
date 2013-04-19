@@ -10,6 +10,7 @@
 
 -record(state, {
 	map_store = none,
+match_id = none,
 	player_store = none,
 	match_hub_pid = none,
 	end_match_timer = none,
@@ -44,7 +45,7 @@ pick_object(MatchHandle, Session, Message) ->
 	gen_fsm:send_event(MatchHandle, {pick_object, Session, Message}).
 
 %% FIXME create a new init to recover data from a crash
-init(MatchParams) ->
+init({MatchId, MatchParams}) ->
 	lager:debug("Params: ~p", [MatchParams]),
 	%Load all match related services
 	{ok, MapStore} = hs_file_map_loader:load(proplists:get_value(map_file, MatchParams, none)),
@@ -52,12 +53,12 @@ init(MatchParams) ->
 	{ok, MatchHubPid} = gen_event:start_link(),
 	% FIXME: Add a supervised event handler
 	StartMatchTimer = gen_fsm:start_timer(proplists:get_value(match_duration, MatchParams, none), start_match_timeout),
-	ok = gen_event:add_handler(MatchHubPid, hs_rules_enforcement, {PlayerStore}),
+	ok = gen_event:add_handler(MatchHubPid, hs_rules_enforcement, {MatchParams, PlayerStore}),
 	% Add AI's
 	create_ai(MapStore, PlayerStore, MatchHubPid, MatchParams),
 	{ok, waiting,
 		#state{map_store = MapStore, player_store = PlayerStore, match_hub_pid = MatchHubPid,
-			start_match_timer = StartMatchTimer, match_params = MatchParams}}.
+			start_match_timer = StartMatchTimer, match_params = MatchParams, match_id = MatchId}}.
 
 create_ai(MapStore, PlayerStore, MatchHub, _MatchParams) ->
 	{ok, SessionId, _UserId} = hs_account_service:login(),
@@ -118,8 +119,10 @@ playing(_Message, State) ->
 
 handle_event({join, SessionId, Pid}, StateName, State) ->
 	Parameters = [{session_id, SessionId}, {websocket_pid , Pid}],
-% FIXME: link to the connection handler
+	% FIXME: link to the connection handler
 	ok = gen_event:add_handler(State#state.match_hub_pid, hs_events_handler, Parameters),
+	% FIXME Handle a player leaving.
+	hs_match_manager_service:add_player(State#state.match_id),
 	{next_state, StateName, State};
 handle_event({new_player, ClientHandle, PlayerData}, StateName, State) ->
 	PlayerStore = State#state.player_store,
