@@ -49,7 +49,7 @@ start_match(GhostAIPid) ->
 end_match(GhostAIPid) ->
 	gen_fsm:send_all_state_event(GhostAIPid, {end_match}).
 killed(GhostAIPid) ->
-	gen_fsm:send_event(GhostAIPid, {killed}).
+	gen_fsm:send_all_state_event(GhostAIPid, {killed}).
 
 %% Callbacks
 init({Session, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, GameEventManagerPid}) ->
