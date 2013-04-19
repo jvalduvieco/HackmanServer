@@ -51,8 +51,8 @@ init(MatchParams) ->
 	{ok, PlayerStore} = hs_player_store:init(),
 	{ok, MatchHubPid} = gen_event:start_link(),
 	% FIXME: Add a supervised event handler
-	ok = gen_event:add_handler(MatchHubPid, hs_rules_enforcement, []),
 	StartMatchTimer = gen_fsm:start_timer(proplists:get_value(match_duration, MatchParams, none), start_match_timeout),
+	ok = gen_event:add_handler(MatchHubPid, hs_rules_enforcement, {PlayerStore}),
 	% Add AI's
 	create_ai(MapStore, PlayerStore, MatchHubPid, MatchParams),
 	{ok, waiting,

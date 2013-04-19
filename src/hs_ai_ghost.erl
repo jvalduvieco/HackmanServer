@@ -67,7 +67,6 @@ init({Session, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, Game
 %% State: waiting
 %% ---------------------------------------------------
 waiting({start_match}, State) ->
-%%   lager:debug("pos: ~p; map_width: ~p; map_height: ~p", [State#state.pos, State#state.map_width, State#state.map_height]),
 	TargetCoords = choose_target_coords(State#state.pos, State#state.map_width, State#state.map_height),
 %%   lager:debug("TargetCoords: ~p", [TargetCoords]),
   % make decision
@@ -88,10 +87,12 @@ search({timeout, _Ref, move_timeout}, State) ->
 	NewTargetCoord = maybe_change_target_coord(State#state.pos, State#state.target_coord, State#state.map_width, State#state.map_height),
   NewVel = take_decision(State#state.map_handle, State#state.pos, State#state.velocity_vector, NewTargetCoord),
   NewPos = move(State#state.pos, NewVel),
-	maybe_announce(State#state.velocity_vector, NewVel, NewPos, State),
+	maybe_announce_velocity(State#state.velocity_vector, NewVel, NewPos, State),
+	maybe_announce_position(State#state.pos, NewPos, State#state.game_event_manager_pid),
   MoveTimerRef = create_move_timer(),
   {next_state, search, State#state{pos = NewPos, timer_ref_movement = MoveTimerRef, velocity_vector = NewVel, target_coord = NewTargetCoord}};
 search({timeout, _Ref, status_timeout}, State) ->
+  lager:debug("[search]"),
   TargetPacman = choose_target_pacman(State#state.player_store),
 	TargetCoords = hs_player_store:get_player_position(State#state.player_store, TargetPacman),
 	%lager:debug("params ~p ~p ~p ~p",[State#state.map_handle, State#state.pos, State#state.velocity_vector, TargetCoords]),
@@ -112,7 +113,8 @@ pursue({timeout, _Ref, move_timeout}, State) ->
   TargetCoords = recalculate_target_pacman_coord(State#state.player_store, State#state.target_id),
 	NewVel = take_decision(State#state.map_handle, State#state.pos, State#state.velocity_vector, TargetCoords),
   NewPos = move(State#state.pos, NewVel),
-	maybe_announce(State#state.velocity_vector, NewVel, NewPos, State),
+	maybe_announce_velocity(State#state.velocity_vector, NewVel, NewPos, State),
+  maybe_announce_position(State#state.pos, NewPos, State#state.game_event_manager_pid),
   MoveTimerRef = create_move_timer(),
   {next_state, pursue, State#state{velocity_vector = NewVel, pos = NewPos, timer_ref_movement = MoveTimerRef}};
 pursue({timeout, _Ref, status_timeout}, State) ->
@@ -127,7 +129,13 @@ handle_event({end_match}, _StateName, State) ->
 	StatusTimerRef = State#state.timer_ref_status ,
 	gen_fsm:cancel_timer(MoveTimerRef),
 	gen_fsm:cancel_timer(StatusTimerRef),
-  {next_state, waiting, State#state{timer_ref_movement = none, timer_ref_status = none}}.
+  {next_state, waiting, State#state{timer_ref_movement = none, timer_ref_status = none}};
+handle_event({killed}, _StateName, State) ->
+  lager:debug("killed"),
+  NewState = State#state{pos={11 * ?HS_TILE_WIDTH, 12 * ?HS_TILE_HEIGHT}}, % TODO: ghost house
+  {next_state, search, NewState};
+handle_event(_Event, StateName, State) ->
+  {next_state, StateName, State}.
 
 handle_sync_event(_Event, _From, StateName, State) ->
   {reply, ok, StateName, State}.
@@ -142,7 +150,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
   {ok, StateName, State}.
 
 %% private functions
-maybe_announce(OldVelocity, CurrentVelocity, Position, State) when OldVelocity =/= CurrentVelocity ->
+maybe_announce_velocity(OldVelocity, CurrentVelocity, Position, State) when OldVelocity =/= CurrentVelocity ->
 	ClientHandle=hs_client_handle:init(State#state.session, self()),
 	{VelX, VelY} = CurrentVelocity,
 	{PosX, PosY} = normalize_coords(Position),
@@ -151,8 +159,16 @@ maybe_announce(OldVelocity, CurrentVelocity, Position, State) when OldVelocity =
 	%lager:debug("Announcing ~p (~p , ~p)",[PositionFormatted, OldVelocity, CurrentVelocity]),
 	gen_event:notify(State#state.game_event_manager_pid,
 		{position_update, ClientHandle, State#state.player_data ++ [Velocity, PositionFormatted]});
-maybe_announce(_OldVelocity, _CurrentVelocity, _Position, _State) ->
+maybe_announce_velocity(_OldVelocity, _CurrentVelocity, _Position, _State) ->
 	ok.
+
+maybe_announce_position(OldPos, NewPos, GameEventManagerPid) ->
+  maybe_announce_tiled_position(translate_coord_to_tile(OldPos), translate_coord_to_tile(NewPos), GameEventManagerPid).
+maybe_announce_tiled_position(OldTilePos, NewTilePos, GameEventManagerPid) when OldTilePos =/= NewTilePos ->
+  gen_event:notify(GameEventManagerPid, {ghost_ai_position_update, self(), NewTilePos});
+maybe_announce_tiled_position(_OldTilePos, _NewTilePos, _GameEventManagerPid) ->
+  ok.
+
 create_move_timer() ->
   gen_fsm:start_timer(?HS_AI_GHOST_MOVE_TIME, move_timeout).
 
@@ -216,11 +232,7 @@ take_decision(MapHandle, CurrentPosition, CurrentVelocity, TargetCoordinates) ->
   {ok, ListTilePositions} = hs_map_store:free_move_positions(MapHandle, TilePos),
 	TargetTile = translate_coord_to_tile(TargetCoordinates),
   Result = choose_velocity_vector(TilePos, ListTilePositions, TargetTile, CurrentVelocity),
-%%  lager:debug("  TilePos: ~p (~p);  TargetTile: ~p;  Velocity: ~p;  ListTilePositions: ~p", [TilePos, CurrentPosition, TargetTile, Result, ListTilePositions]),
-%%   lager:debug("  ListTilePositions: ~p", [ListTilePositions]),
-%%   lager:debug("  TilePos:    ~p (~p)", [TilePos, CurrentPosition]),
-%%   lager:debug("  TargetTile: ~p", [TargetTile]),
-%%   lager:debug("  Velocity:   ~p", [Result]),
+%%   lager:debug("  TilePos: ~p (~p);  TargetTile: ~p;  Velocity: ~p;  ListTilePositions: ~p", [TilePos, CurrentPosition, TargetTile, Result, ListTilePositions]),
   Result.
 
 choose_velocity_vector(TilePos, [CoordPosition|[]], _, _) ->

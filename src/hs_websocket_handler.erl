@@ -39,7 +39,7 @@ websocket_init(_Any, Req, []) ->
 
 % Called when a text message arrives.
 websocket_handle({text, Msg}, Req, State) ->
-	%lager:debug("(~p) ==> ~p", [self(),Msg]),
+%% 	lager:debug("(~p) ==> ~p", [self(),Msg]),
 	Decoded = jsx:decode(Msg),
 	%%lager:debug("Decoded: ~p",[Decoded]),
 	{Type, Session} = get_metadata(Decoded),
@@ -64,7 +64,7 @@ websocket_terminate(_Reason, _Req, _State) ->
 
 %% Tools
 handle_result(reply, Data, Req, State) ->
-	%lager:debug("(~p) <== ~p", [self(),Data]),
+%% 	lager:debug("(~p) <== ~p", [self(),Data]),
 	{reply, {text, jsx:encode(Data)}, Req, State};
 handle_result(noreply, _Data, Req, State) ->
 	{ok, Req, State};
