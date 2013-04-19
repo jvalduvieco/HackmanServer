@@ -44,11 +44,11 @@ handle_call({new_match, GameId}, _From, State) ->
 	{ok, MatchRefereePid} = hs_match_referee:start_link({BinMatchId, GameSetup}),
 	ets:insert(?TABLE_NAME,{BinMatchId, GameId, MatchRefereePid, 0}),
 	{reply, {ok, State#state.match_id, MatchRefereePid}, State#state{match_id = State#state.match_id + 1 }};
-handle_call({get_match_handle, BinMatchId}, _From, State) ->
-	MatchId = list_to_integer(binary_to_list(BinMatchId)),
+handle_call({get_match_handle, MatchId}, _From, State) ->
 	MatchRefereePid = ets:lookup_element(?TABLE_NAME, MatchId, 3),
 	{reply, {ok, MatchRefereePid}, State};
 handle_call({list_matches, GameId}, _From, State) ->
+	lager:debug("list_matches: ~p",[GameId]),
 	Matches = ets:select(?TABLE_NAME, [{{'$1',GameId,'$2','$3'},[],[{{'$1','$3'}}]}]),
 	{reply, {ok, Matches}, State}.
 

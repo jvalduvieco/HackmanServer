@@ -64,7 +64,7 @@ websocket_terminate(_Reason, _Req, _State) ->
 
 %% Tools
 handle_result(reply, Data, Req, State) ->
-%% 	lager:debug("(~p) <== ~p", [self(),Data]),
+	lager:debug("(~p) <== ~p", [self(),Data]),
 	{reply, {text, jsx:encode(Data)}, Req, State};
 handle_result(noreply, _Data, Req, State) ->
 	{ok, Req, State};

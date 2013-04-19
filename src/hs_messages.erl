@@ -13,12 +13,12 @@ handle(<<"login">>, _From, _Message, State) ->
 	{reply, [{<<"StatusCode">>, 200},
 		{<<"type">>,<<"loginResponse">>},
 		{<<"data">>,[{<<"sessionId">>, SessionId}]}], #state{}};
-handle(<<"listMatches">>, From, Message, State) ->
-	MatchId = proplists:get_value(<<"matchId">>, Message, none),
-	Matches = hs_match_manager_service:list_matches(MatchId),
+handle(<<"listMatches">>, _From, Message, State) ->
+	GameId = proplists:get_value(<<"gameId">>, Message, none),
+	{ok, Matches} = hs_match_manager_service:list_matches(GameId),
 	{reply, [{<<"StatusCode">>, 200},
 		{<<"type">>, <<"listMatchesResponse">>},
-		{<<"data">>, [{<<"matchList">>, Matches}]}], State};
+		{<<"data">>, [{<<"matches">>, Matches}]}], State};
 handle(<<"joinMatch">>, From, Message, State) ->
 	MatchId = proplists:get_value(<<"matchId">>, Message, none),
 	{ok, MatchRefereePid} = hs_match_manager_service:get_match_handle(MatchId),
