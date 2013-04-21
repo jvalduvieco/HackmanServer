@@ -50,7 +50,7 @@ websocket_handle({text, Msg}, Req, State) ->
 % With this callback we can handle other kind of
 % messages, like binary.
 websocket_handle(Msg, Req, State) ->
-	lager:debug("Received binary: ~p", [Msg]),
+	lager:warning("Received binary: ~p", [Msg]),
 	{ok, Req, State}.
 
 % Other messages from the inner system are handled here.
@@ -59,12 +59,14 @@ websocket_info(Info, Req, State) ->
 %% FIXME: Fa pudor passar el Req només per a posar-lo a la resposta...
 	handle_result(Action, Data, Req, State).
 
-websocket_terminate(_Reason, _Req, _State) ->
+websocket_terminate(_Reason, _Req, State) ->
+	hs_messages:handle_client_left(State),
+	lager:debug("I die..."),
 	ok.
 
 %% Tools
 handle_result(reply, Data, Req, State) ->
-	lager:debug("(~p) <== ~p", [self(),Data]),
+	%%lager:debug("(~p) <== ~p", [self(),Data]),
 	{reply, {text, jsx:encode(Data)}, Req, State};
 handle_result(noreply, _Data, Req, State) ->
 	{ok, Req, State};

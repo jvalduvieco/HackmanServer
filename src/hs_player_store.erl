@@ -15,7 +15,7 @@ init() ->
 add_player(PlayerStoreHandle, Session, PlayerType, PlayerData) ->
 	TableName = get_table_name(PlayerStoreHandle),
 	ets:insert(TableName,{Session,{none, none}, PlayerType, PlayerData}).
-remove_player(PlayerStoreHandle,SessionId) ->
+remove_player(PlayerStoreHandle, SessionId) ->
 	TableName = get_table_name(PlayerStoreHandle),
 	ets:delete(TableName, SessionId).
 update_player_position(PlayerStoreHandle, Key, Position) ->

@@ -3,16 +3,18 @@
 -author("jvalduvieco").
 
 %% API
--export([handle/4]).
+-export([handle/4, handle_client_left/1]).
 -record(state, {
-	match_referee_pid = none
+	match_referee_pid = none,
+	match_id = none,
+	client_handle = none
 }).
 
-handle(<<"login">>, _From, _Message, State) ->
+handle(<<"login">>, _From, _Message, _State) ->
 	{ok, SessionId, _UserId} = hs_account_service:login(),
 	{reply, [{<<"StatusCode">>, 200},
 		{<<"type">>,<<"loginResponse">>},
-		{<<"data">>,[{<<"sessionId">>, SessionId}]}], #state{}};
+		{<<"data">>,[{<<"sessionId">>, SessionId}]}], #state{client_handle = hs_client_handle:init(SessionId, self())}};
 handle(<<"listMatches">>, _From, Message, State) ->
 	GameId = proplists:get_value(<<"gameId">>, Message, none),
 	{ok, Matches} = hs_match_manager_service:list_matches(GameId),
@@ -24,7 +26,7 @@ handle(<<"joinMatch">>, From, Message, State) ->
 	{ok, MatchRefereePid} = hs_match_manager_service:get_match_handle(MatchId),
 	hs_match_referee:join(MatchRefereePid, hs_client_handle:get_session(From)),
 	{reply, [{<<"StatusCode">>, 200},
-		{<<"type">>, <<"joinMatchResponse">>}], State#state{match_referee_pid=MatchRefereePid}};
+		{<<"type">>, <<"joinMatchResponse">>}], State#state{match_referee_pid=MatchRefereePid, match_id = MatchId}};
 handle(<<"newMatch">>, From, Message, State) ->
 	GameId = proplists:get_value(<<"gameId">>, Message, none),
 	{ok, MatchId, MatchRefereePid} = hs_match_manager_service:new_match(GameId),
@@ -66,3 +68,6 @@ handle( none, From, Message, State) ->
 		{<<"originalMessage">>, Message}],
 		{<<"session">>, From},
 		State}.
+
+handle_client_left(State) ->
+	hs_match_referee:player_left(State#state.match_referee_pid, State#state.client_handle).

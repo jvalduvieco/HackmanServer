@@ -19,7 +19,7 @@
 %% States
 -export([waiting/2, search/2, search/3, pursue/2]).
 %% Public API
--export([start_link/1]).
+-export([start_link/1, die/1]).
 -export([start_match/1, killed/1, end_match/1]).
 
 %% State
@@ -50,6 +50,8 @@ end_match(GhostAIPid) ->
 	gen_fsm:send_all_state_event(GhostAIPid, {end_match}).
 killed(GhostAIPid) ->
 	gen_fsm:send_all_state_event(GhostAIPid, {killed}).
+die(GhostAIPid) ->
+	gen_fsm:send_all_state_event(GhostAIPid, {die}).
 
 %% Callbacks
 init({Session, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, GameEventManagerPid}) ->
@@ -134,6 +136,8 @@ handle_event({killed}, _StateName, State) ->
   lager:debug("killed"),
   NewState = State#state{pos={11 * ?HS_TILE_WIDTH, 12 * ?HS_TILE_HEIGHT}}, % TODO: ghost house
   {next_state, search, NewState};
+handle_event({die}, _StateName, State) ->
+	{stop, die_requested, State};
 handle_event(_Event, StateName, State) ->
   {next_state, StateName, State}.
 
