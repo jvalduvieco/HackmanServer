@@ -3,7 +3,7 @@
 -author("jordillonch").
 
 %% API
--export([init/4, add_entity/5, set_properties/5, delete_entity_check_type/3, get_entities/2,
+-export([init/4, add_entity/5, set_properties/5, get_properties/1, delete_entity_check_type/3, get_entities/2,
 	get_entities_by_type/2, is_void/2, exists/2, free_move_positions/2]).
 
 %% TODO: Refactor this into a service
@@ -25,7 +25,8 @@ init(MaxX, MaxY, TileHeight, TileWidth) ->
 
 set_properties (MapHandle, MaxX, MaxY, TileHeight, TileWidth) ->
 	MapHandle#map_handle{max_x = MaxX, max_y = MaxY, tile_height = TileHeight, tile_width = TileWidth}.
-
+get_properties (MapHandle) ->
+	{{MapHandle#map_handle.max_x, MapHandle#map_handle.max_y},{MapHandle#map_handle.tile_width, MapHandle#map_handle.tile_height}}.
 %% add an entity to the map
 %% if you want to creat walls you can add an empty entity that is collidable
 add_entity(MapHandle, Id, Entity, {X, Y}, IsSolid) ->

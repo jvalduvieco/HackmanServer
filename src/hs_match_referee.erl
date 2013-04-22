@@ -63,10 +63,8 @@ init({MatchId, MatchParams}) ->
 		#state{map_store = MapStore, player_store = PlayerStore, match_hub_pid = MatchHubPid,
 			start_match_timer = StartMatchTimer, match_params = MatchParams, match_id = MatchId, ai_pids = AIPids}}.
 wake_ai(MapStore, PlayerStore, MatchHub, AIParams) ->
-	{ok, SessionId, _UserId} = hs_account_service:login(),
-	PlayerId = proplists:get_value(player_id, AIParams, none),
-	PlayerData = [{<<"sessionId">>, SessionId},{<<"playerId">>, PlayerId}, {<<"type">>, <<"ghostAI">>}] ,
-	{ok, AiPid} = hs_ai_ghost:start_link({SessionId, {32, 96}, MapStore, {20, 22}, PlayerData, PlayerStore, MatchHub}),
+	AIModule = proplists:get_value(ai_module, AIParams),
+	{ok, AiPid} = AIModule:start_link({MapStore, PlayerStore, MatchHub, AIParams}),
 	AiPid.
 wake_ais(MapStore, PlayerStore, MatchHub, MatchParams) ->
 	AIDef = proplists:get_value(match_ai, MatchParams, none),

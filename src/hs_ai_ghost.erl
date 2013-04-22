@@ -36,12 +36,13 @@
   timer_ref_movement = none,
 	player_data = none,
 	player_store = none,
-	game_event_manager_pid = none
+	game_event_manager_pid = none,
+	target_type = none
 }).
 
 %% API
-start_link({Id, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, GameEventManagerPid}) ->
-	gen_fsm:start_link(?MODULE, {Id, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, GameEventManagerPid}, []).
+start_link({Map, PlayerStore, GameEventManagerPid, AIParams}) ->
+	gen_fsm:start_link(?MODULE, {Map, PlayerStore, GameEventManagerPid, AIParams}, []).
 
 %% Public API
 start_match(GhostAIPid) ->
@@ -54,15 +55,22 @@ die(GhostAIPid) ->
 	gen_fsm:send_all_state_event(GhostAIPid, {die}).
 
 %% Callbacks
-init({Session, {X, Y}, Map, {MapWidth, MapHeight}, PlayerData, PlayerStore, GameEventManagerPid}) ->
-  lager:debug("initializing ghost ai... ~p", [Session]),
-  <<A:32, B:32, C:32>> = crypto:rand_bytes(12),
-  random:seed({A,B,C}),
-	hs_player_store:add_player(PlayerStore, Session, <<"ghostAI">>, PlayerData),
+init({Map, PlayerStore, GameEventManagerPid, AIParams}) ->
+	<<A:32, B:32, C:32>> = crypto:rand_bytes(12),
+	random:seed({A,B,C}),
+	PlayerType = proplists:get_value(player_type, AIParams),
+	TargetType = proplists:get_value(target_type, AIParams),
+	PlayerId = proplists:get_value(player_id, AIParams),
+	InitialCoords =  proplists:get_value(initial_coords, AIParams),
+	{_MapSize={MaxX,MaxY}, _TileSize} = hs_map_store:get_properties(Map),
+	{ok, SessionId, _UserId} = hs_account_service:login(),
+	lager:info("Initializing ~p... ~p", [PlayerType, SessionId]),
+	PlayerData = [{<<"sessionId">>, SessionId},{<<"playerId">>, PlayerId}, {<<"type">>, PlayerType}] ,
+	hs_player_store:add_player(PlayerStore, SessionId, PlayerType, PlayerData),
 	ok = gen_event:add_handler(GameEventManagerPid, hs_ai_ghost_events_handler, erlang:self()),
   {ok, waiting,
-	  #state{session = Session, pos={X, Y}, map_handle = Map, map_width = MapWidth, map_height = MapHeight,
-  player_data = PlayerData, player_store = PlayerStore, game_event_manager_pid = GameEventManagerPid}}.
+	  #state{session = SessionId, pos=InitialCoords, map_handle = Map, map_width = MaxX, map_height = MaxY,
+  player_data = PlayerData, player_store = PlayerStore, game_event_manager_pid = GameEventManagerPid, target_type = TargetType}}.
 
 %% gen_fsm callbacks
 %% ---------------------------------------------------
@@ -94,8 +102,8 @@ search({timeout, _Ref, move_timeout}, State) ->
   MoveTimerRef = create_move_timer(),
   {next_state, search, State#state{pos = NewPos, timer_ref_movement = MoveTimerRef, velocity_vector = NewVel, target_coord = NewTargetCoord}};
 search({timeout, _Ref, status_timeout}, State) ->
-  lager:debug("[search]"),
-  TargetPacman = choose_target_pacman(State#state.player_store),
+  %lager:debug("[search]"),
+  TargetPacman = choose_target_entity(State#state.player_store, State#state.target_type),
 	TargetCoords = hs_player_store:get_player_position(State#state.player_store, TargetPacman),
 	%lager:debug("params ~p ~p ~p ~p",[State#state.map_handle, State#state.pos, State#state.velocity_vector, TargetCoords]),
 	Velocity = take_decision(State#state.map_handle, State#state.pos, State#state.velocity_vector, TargetCoords),
@@ -112,7 +120,7 @@ search(_Event, _From, State) ->
 %% ---------------------------------------------------
 pursue({timeout, _Ref, move_timeout}, State) ->
   %lager:debug("[pursue] move_timeout"),
-  TargetCoords = recalculate_target_pacman_coord(State#state.player_store, State#state.target_id),
+  TargetCoords = recalculate_target_entity_coord(State#state.player_store, State#state.target_id),
 	NewVel = take_decision(State#state.map_handle, State#state.pos, State#state.velocity_vector, TargetCoords),
   NewPos = move(State#state.pos, NewVel),
 	maybe_announce_velocity(State#state.velocity_vector, NewVel, NewPos, State),
@@ -222,13 +230,14 @@ choose_target_coords_available_quads(AvailableQuads, MapWidth, MapHeight) ->
 %%   lager:debug("AvailableQuads: ~p; ChooseQuad: ~p", [AvailableQuads, ChooseQuad]),
   lists:nth(ChooseQuad, Quads).
 
-choose_target_pacman(PlayerStore) ->
+choose_target_entity(PlayerStore, TargetType) ->
 	% FIXME Handle when no pacmans are in match
-  PacmanInGame = hs_player_store:list_players_by_type(PlayerStore, <<"player">>),
-	lager:debug("Pacmans in game: ~p", [PacmanInGame]),
+	TargetType = proplists:get_value(target_type, TargetType),
+  PacmanInGame = hs_player_store:list_players_by_type(PlayerStore, TargetType),
+	lager:debug("choose_target: ~p in game: ~p", [TargetType, PacmanInGame]),
 	lists:nth(random:uniform(length(PacmanInGame)), PacmanInGame).
 
-recalculate_target_pacman_coord(PlayerStore, TargetID) ->
+recalculate_target_entity_coord(PlayerStore, TargetID) ->
 	hs_player_store:get_player_position(PlayerStore, TargetID).
 
 take_decision(MapHandle, CurrentPosition, CurrentVelocity, TargetCoordinates) ->
