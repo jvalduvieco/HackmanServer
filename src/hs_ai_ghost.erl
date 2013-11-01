@@ -232,7 +232,6 @@ choose_target_coords_available_quads(AvailableQuads, MapWidth, MapHeight) ->
 
 choose_target_entity(PlayerStore, TargetType) ->
 	% FIXME Handle when no pacmans are in match
-	TargetType = proplists:get_value(target_type, TargetType),
   PacmanInGame = hs_player_store:list_players_by_type(PlayerStore, TargetType),
 	lager:debug("choose_target: ~p in game: ~p", [TargetType, PacmanInGame]),
 	lists:nth(random:uniform(length(PacmanInGame)), PacmanInGame).
@@ -272,7 +271,10 @@ calculate_velocity_vector({CurrentCoordX, Same}, {CoordPosX, Same}) when CoordPo
 calculate_velocity_vector({CurrentCoordX, Same}, {CoordPosX, Same}) when CoordPosX < CurrentCoordX -> { ?HS_AI_GHOST_SPEED,  0};
 calculate_velocity_vector({Same, CurrentCoordY}, {Same, CoordPosY}) when CoordPosY >= CurrentCoordY -> { 0, -?HS_AI_GHOST_SPEED};
 calculate_velocity_vector({Same, CurrentCoordY}, {Same, CoordPosY}) when CoordPosY < CurrentCoordY -> { 0,  ?HS_AI_GHOST_SPEED}.
-
+translate_coord_to_tile({0, Y}) ->
+  {0,erlang:round(Y / ?HS_TILE_HEIGHT)};
+translate_coord_to_tile({X, 0}) ->
+  {erlang:round(X / ?HS_TILE_WIDTH), 0};
 translate_coord_to_tile({X, Y}) ->
   TileX = erlang:round(X / ?HS_TILE_WIDTH),
   TileY = erlang:round(Y / ?HS_TILE_HEIGHT),
